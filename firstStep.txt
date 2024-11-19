@@ -1,3 +1,27 @@
+tengo que realizar este proyecto
+Control de una máquina para laboratorio farma
+
+
+la pantalla tiene un esp32 integrado para controlar la pantalla:
+esta pantalla controlada por el esp32 solo servira para mostrar los datos.
+El control esta pensado para que corra en una placa lolin S3
+La placa de control lolin S3 enviara los datos de los sensores via serie 
+No hace falta un refresco de datos a alta velocidad, los eventos que suceden son cambios de temperatura y movimientos lentos.
+Hacia la pantalla, el micro que controla la aplicación mandará datos periódicamente y se deberán actualizar en el display. Normalmente hago una trama sencilla con 3 caracteres que identifican el comando y a continuación los datos, con los separadores o terminadores que haga falta.
+    • Estado (paro, marcha…)
+    • Alarmas
+    • Temperaturas
+    • Contadores
+
+Desde la pantalla también se deberán poder comunicar datos al micro.
+    • Botones de paro, marcha, reset alarmas…
+    • Parámetros varios
+        ◦ Numéricos como set point de temperaturas, velocidades, etc…
+        ◦ Booleanos para activar o desactivar funciones
+
+
+la pantalla es  ESP32-8048S070C
+a partir de este codigo de muestra como podemos empezar a codificar la solucion:
 #include "esp_check.h"
 
 #include "bsp.h"
@@ -8,28 +32,6 @@
 
 #include "lv_examples.h"
 #include "lv_demos.h"
-
-#include "nav_panel.h"
-#include "screens.h"
-
-
-// codigo de navegación
-lv_obj_t *main_screen;
-lv_obj_t *settings_screen;
-
-/* Callbacks para navegación */
-void go_to_main_screen(void) {
-    lv_scr_load(main_screen);
-}
-
-void go_to_settings_screen(void) {
-    lv_scr_load(settings_screen);
-}
-
-void go_back(void) {
-    lv_scr_load(main_screen); // Por simplicidad, siempre volvemos a la principal
-}
-//fin de la sección de código de navegación
 
 /* LCD settings */
 #define APP_LCD_LVGL_FULL_REFRESH           (0)
@@ -203,11 +205,10 @@ static esp_err_t app_lvgl_init(esp_lcd_panel_handle_t lp, esp_lcd_touch_handle_t
 
 void app_main(void)
 {
-    // Inicializar LCD
     ESP_ERROR_CHECK(app_lcd_init(&lcd_panel));
     ESP_ERROR_CHECK(app_touch_init(&my_bus, &touch_io_handle, &touch_handle));
     ESP_ERROR_CHECK(app_lvgl_init(lcd_panel, touch_handle, &lvgl_disp, &lvgl_touch_indev));
-    // Configuración de retroiluminación
+
     const gpio_config_t bk_light = {
         .pin_bit_mask = (1 << BSP_LCD_GPIO_BK_LIGHT),
         .mode = GPIO_MODE_OUTPUT,
@@ -218,20 +219,7 @@ void app_main(void)
     ESP_ERROR_CHECK(gpio_config(&bk_light));
     gpio_set_level(BSP_LCD_GPIO_BK_LIGHT, BSP_LCD_BK_LIGHT_ON_LEVEL);
 
-    // Inicializar pantallas
-    main_screen = lv_obj_create(NULL);     // Crear objeto para la pantalla principal
-    settings_screen = lv_obj_create(NULL); // Crear objeto para la pantalla de ajustes
-
-    // Añadir contenido a las pantallas
-    create_main_screen(main_screen);       // Inicializar contenido de la pantalla principal
-    create_settings_screen(settings_screen); // Inicializar contenido de la pantalla de ajustes
-
-    // Crear el panel de navegación en ambas pantallas
     lvgl_port_lock(0);
-    create_nav_panel(main_screen, go_to_main_screen, go_to_settings_screen, go_back);
-    create_nav_panel(settings_screen, go_to_main_screen, go_to_settings_screen, go_back);
+    lv_demo_widgets();
     lvgl_port_unlock();
-
-    // Mostrar la pantalla principal al inicio
-    lv_scr_load(main_screen);
 }
