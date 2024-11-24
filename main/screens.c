@@ -35,20 +35,6 @@ void create_main_screen(lv_obj_t *scr) {
     lv_obj_set_style_bg_color(bg, lv_color_hex(0xf0f0f0), LV_PART_MAIN); // Fondo gris claro
     lv_obj_set_style_bg_opa(bg, LV_OPA_COVER, LV_PART_MAIN);
 
-    // Logo
-    lv_obj_t *logo = lv_label_create(scr);
-    lv_label_set_text(logo, "LOGO");
-    lv_obj_set_style_text_color(logo, lv_color_hex(0x0000FF), 0); // Azul
-    lv_obj_set_style_text_font(logo, &lv_font_montserrat_14, 0);
-    lv_obj_align(logo, LV_ALIGN_TOP_LEFT, 10, 10); // Alineado en la esquina superior izquierda
-
-    // Título de la pantalla (LOG MCU)
-    lv_obj_t *title = lv_label_create(scr);
-    lv_label_set_text(title, "LOG MCU");
-    lv_obj_set_style_text_color(title, lv_color_hex(0x0000FF), 0); // Azul
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_14, 0);
-    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10); // Centrado en la parte superior
-
     // Temperaturas
     lv_obj_t *label_temp1 = lv_label_create(scr);
     lv_label_set_text(label_temp1, "T1: 25°C");
