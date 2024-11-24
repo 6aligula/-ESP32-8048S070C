@@ -11,7 +11,8 @@
 
 #include "nav_panel.h"
 #include "screens.h"
-
+#include "driver/uart.h"
+#include "uart_config.h"
 
 // codigo de navegación
 lv_obj_t *main_screen;
@@ -203,6 +204,23 @@ static esp_err_t app_lvgl_init(esp_lcd_panel_handle_t lp, esp_lcd_touch_handle_t
 
 void app_main(void)
 {
+    // Configuración UART
+    uart_config_t uart_config = {
+        .baud_rate = UART_BAUD_RATE,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+    };
+    // Configurar los parámetros para UART1
+    uart_param_config(UART_PORT_NUM, &uart_config);
+
+    // Asignar los pines GPIO17 y GPIO18 al UART1
+    uart_set_pin(UART_PORT_NUM, UART_TX_PIN, UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+
+    // Instalar el controlador UART con un buffer de 1024 bytes
+    uart_driver_install(UART_PORT_NUM, 1024, 0, 0, NULL, 0);
+
     // Inicializar LCD
     ESP_ERROR_CHECK(app_lcd_init(&lcd_panel));
     ESP_ERROR_CHECK(app_touch_init(&my_bus, &touch_io_handle, &touch_handle));

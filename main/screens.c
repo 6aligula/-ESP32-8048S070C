@@ -1,4 +1,32 @@
 #include "screens.h"
+#include <string.h> // Para strlen
+#include "driver/uart.h"
+#include "uart_config.h"
+#include "esp_log.h"
+
+
+// Función genérica para enviar comandos UART
+void send_command(const char *command) {
+    uart_write_bytes(UART_PORT_NUM, command, strlen(command));
+    ESP_LOGI("UART", "Enviado: %s", command);
+}
+
+// Callback genérico para manejar eventos de botones
+void button_event_handler(lv_event_t *e) {
+    lv_obj_t *btn = lv_event_get_target(e); // Obtiene el botón que disparó el evento
+    const char *btn_label = lv_label_get_text(lv_obj_get_child(btn, 0)); // Obtiene el texto del botón
+
+    if (strcmp(btn_label, "Start") == 0) {
+        ESP_LOGI("BUTTON", "Botón Start presionado.");
+        send_command("CMD:START\n");
+    } else if (strcmp(btn_label, "Stop") == 0) {
+        ESP_LOGI("BUTTON", "Botón Stop presionado.");
+        send_command("CMD:STOP\n");
+    } else if (strcmp(btn_label, "Reset") == 0) {
+        ESP_LOGI("BUTTON", "Botón Reset presionado.");
+        send_command("CMD:RESET\n");
+    }
+}
 
 void create_main_screen(lv_obj_t *scr) {
     // Fondo de la pantalla principal
@@ -75,29 +103,29 @@ void create_main_screen(lv_obj_t *scr) {
     lv_obj_set_style_text_font(label_alarm, &lv_font_montserrat_14, 0);
     lv_obj_align(label_alarm, LV_ALIGN_TOP_LEFT, 10, 10); // Alineado dentro del cuadro de alarmas
 
-    // Botones de control (Start, Stop, Reset)
-    lv_obj_t *btn_start = lv_btn_create(scr);
-    lv_obj_set_size(btn_start, 100, 50);
-    lv_obj_set_style_bg_color(btn_start, lv_color_hex(0x32CD32), LV_PART_MAIN); // Verde
-    lv_obj_align(btn_start, LV_ALIGN_BOTTOM_RIGHT, -10, -10); // Alineado en la esquina inferior derecha
-    lv_obj_t *label_start = lv_label_create(btn_start);
-    lv_label_set_text(label_start, "Start");
+    // Crear botones y asignar el callback genérico
+    struct {
+        const char *label;
+        lv_color_t color;
+        lv_align_t align;
+        int offset_x;
+    } buttons[] = {
+        {"Start", lv_color_hex(0x32CD32), LV_ALIGN_BOTTOM_RIGHT, -10},
+        {"Stop", lv_color_hex(0xFF4500), LV_ALIGN_BOTTOM_RIGHT, -120},
+        {"Reset", lv_color_hex(0xFFA500), LV_ALIGN_BOTTOM_RIGHT, -230},
+    };
 
-    lv_obj_t *btn_stop = lv_btn_create(scr);
-    lv_obj_set_size(btn_stop, 100, 50);
-    lv_obj_set_style_bg_color(btn_stop, lv_color_hex(0xFF4500), LV_PART_MAIN); // Rojo
-    lv_obj_align(btn_stop, LV_ALIGN_BOTTOM_RIGHT, -120, -10); // Alineado a la izquierda del botón Start
-    lv_obj_t *label_stop = lv_label_create(btn_stop);
-    lv_label_set_text(label_stop, "Stop");
+    for (int i = 0; i < 3; i++) {
+        lv_obj_t *btn = lv_btn_create(scr);
+        lv_obj_set_size(btn, 100, 50);
+        lv_obj_set_style_bg_color(btn, buttons[i].color, LV_PART_MAIN);
+        lv_obj_align(btn, buttons[i].align, buttons[i].offset_x, -10);
+        lv_obj_t *label = lv_label_create(btn);
+        lv_label_set_text(label, buttons[i].label);
+        lv_obj_add_event_cb(btn, button_event_handler, LV_EVENT_CLICKED, NULL);
+    }
 
-    lv_obj_t *btn_reset = lv_btn_create(scr);
-    lv_obj_set_size(btn_reset, 100, 50);
-    lv_obj_set_style_bg_color(btn_reset, lv_color_hex(0xFFA500), LV_PART_MAIN); // Naranja
-    lv_obj_align(btn_reset, LV_ALIGN_BOTTOM_RIGHT, -230, -10); // Alineado a la izquierda del botón Stop
-    lv_obj_t *label_reset_btn = lv_label_create(btn_reset);
-    lv_label_set_text(label_reset_btn, "Reset");
 }
-
 
 
 void create_settings_screen(lv_obj_t *scr) {
