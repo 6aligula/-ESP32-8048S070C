@@ -2,7 +2,7 @@
 
 lv_obj_t *create_nav_panel(lv_obj_t *parent, nav_callback_t home_cb, nav_callback_t settings_cb, nav_callback_t back_cb) {
     lv_obj_t *nav_panel = lv_obj_create(parent);
-    lv_obj_set_size(nav_panel, lv_pct(100), 50);  // Ancho 100%, alto 50px
+    lv_obj_set_size(nav_panel, lv_pct(100), 70);  // Ancho 100%, alto 50px
     lv_obj_align(nav_panel, LV_ALIGN_TOP_MID, 0, 0);
 
     // Estilo del panel (opcional)
@@ -19,11 +19,17 @@ lv_obj_t *create_nav_panel(lv_obj_t *parent, nav_callback_t home_cb, nav_callbac
 
     // Botón de ajustes
     lv_obj_t *btn_settings = lv_btn_create(nav_panel);
-    lv_obj_set_size(btn_settings, 70, 30);
+    lv_obj_set_size(btn_settings, 80, 30);
     lv_obj_align(btn_settings, LV_ALIGN_CENTER, 0, 0);
     lv_obj_t *label_settings = lv_label_create(btn_settings);
     lv_label_set_text(label_settings, "Ajustes");
+    // Mover solo el texto 5px a la izquierda
+    lv_obj_align(label_settings, LV_ALIGN_CENTER, -3, 0);
     lv_obj_add_event_cb(btn_settings, (lv_event_cb_t)settings_cb, LV_EVENT_CLICKED, NULL);
+    // Estilo para los botones
+    lv_obj_set_style_border_width(btn_settings, 1, LV_PART_MAIN); // Borde de 2px
+    lv_obj_set_style_border_color(btn_settings, lv_color_make(128, 128, 128), LV_PART_MAIN); // Gris medio (RGB)
+    lv_obj_set_style_border_opa(btn_settings, LV_OPA_COVER, LV_PART_MAIN); // Opacidad total
 
     // Botón de atrás
     lv_obj_t *btn_back = lv_btn_create(nav_panel);

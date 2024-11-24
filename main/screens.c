@@ -54,20 +54,20 @@ void create_main_screen(lv_obj_t *scr) {
     lv_label_set_text(label_temp1, "T1: 25°C");
     lv_obj_set_style_text_color(label_temp1, lv_color_hex(0xFFA500), 0); // Naranja
     lv_obj_set_style_text_font(label_temp1, &lv_font_montserrat_14, 0);
-    lv_obj_align(label_temp1, LV_ALIGN_TOP_LEFT, 50, 60); // Alineado a la izquierda
+    lv_obj_align(label_temp1, LV_ALIGN_TOP_LEFT, 50, 80); // Alineado a la izquierda
 
     lv_obj_t *label_temp2 = lv_label_create(scr);
     lv_label_set_text(label_temp2, "T2: 26°C");
     lv_obj_set_style_text_color(label_temp2, lv_color_hex(0xFFA500), 0); // Naranja
     lv_obj_set_style_text_font(label_temp2, &lv_font_montserrat_14, 0);
-    lv_obj_align(label_temp2, LV_ALIGN_TOP_LEFT, 50, 90); // Alineado debajo del primero
+    lv_obj_align(label_temp2, LV_ALIGN_TOP_LEFT, 50, 110); // Alineado debajo del primero
 
     // Volumen
     lv_obj_t *label_volume = lv_label_create(scr);
     lv_label_set_text(label_volume, "Volumen: XX ml");
     lv_obj_set_style_text_color(label_volume, lv_color_hex(0xFFA500), 0); // Naranja
     lv_obj_set_style_text_font(label_volume, &lv_font_montserrat_14, 0);
-    lv_obj_align(label_volume, LV_ALIGN_TOP_LEFT, 50, 120); // Alineado debajo del segundo
+    lv_obj_align(label_volume, LV_ALIGN_TOP_LEFT, 50, 140); // Alineado debajo del segundo
 
     // Contadores
     lv_obj_t *counters_box = lv_obj_create(scr);
