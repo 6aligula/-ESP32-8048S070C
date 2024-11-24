@@ -14,6 +14,8 @@
 #include "driver/uart.h"
 #include "uart_config.h"
 
+// #define APP_LCD_LVGL_FULL_REFRESH 0
+
 // codigo de navegación
 lv_obj_t *main_screen;
 lv_obj_t *settings_screen;
@@ -252,4 +254,6 @@ void app_main(void)
 
     // Mostrar la pantalla principal al inicio
     lv_scr_load(main_screen);
+    // Crear tarea para recibir datos del UART
+    xTaskCreate(uart_receive_task, "uart_receive_task", 4096, NULL, 10, NULL);
 }

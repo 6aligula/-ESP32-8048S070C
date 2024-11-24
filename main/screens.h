@@ -9,4 +9,7 @@ void create_main_screen(lv_obj_t *scr);
 /* Inicializa la pantalla de ajustes */
 void create_settings_screen(lv_obj_t *scr);
 
+// Declaración de la función en screens.h
+void uart_receive_task(void *arg);
+
 #endif // SCREENS_H

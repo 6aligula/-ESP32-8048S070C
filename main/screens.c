@@ -3,6 +3,41 @@
 #include "driver/uart.h"
 #include "uart_config.h"
 #include "esp_log.h"
+#include "esp_lvgl_port.h"
+
+static lv_obj_t *label_temp1;
+static lv_obj_t *label_temp2;
+static lv_obj_t *label_volume;
+
+// Tarea para recibir datos del UART
+void uart_receive_task(void *arg) {
+    char rx_buffer[128];
+    const TickType_t delay_ticks = pdMS_TO_TICKS(5000); // 5 segundos en ticks
+    while (true) {
+        // Leer datos del UART
+        int length = uart_read_bytes(UART_PORT_NUM, (uint8_t *)rx_buffer, sizeof(rx_buffer) - 1, pdMS_TO_TICKS(1000));
+        if (length > 0) {
+            rx_buffer[length] = '\0'; // Asegurar terminación de cadena
+            float t1, t2;
+            int vol;
+
+            // Parsear la trama recibida
+            if (sscanf(rx_buffer, "DATA:T1=%f;T2=%f;VOL=%d;", &t1, &t2, &vol) == 3) {
+                ESP_LOGI("UART", "Recibido - T1: %.2f, T2: %.2f, Vol: %d", t1, t2, vol);
+
+                // Actualizar etiquetas en la pantalla (debe ser en el contexto de LVGL)
+                lvgl_port_lock(0); // Bloquear para actualizar desde otra tarea
+                lv_label_set_text_fmt(label_temp1, "T1: %.2f °C", t1);
+                lv_label_set_text_fmt(label_temp2, "T2: %.2f °C", t2);
+                lv_label_set_text_fmt(label_volume, "Volumen: %d ml", vol);
+                lvgl_port_unlock();
+            } else {
+                ESP_LOGW("UART", "Trama no válida: %s", rx_buffer);
+            }
+        }
+        vTaskDelay(delay_ticks);
+    }
+}
 
 
 // Función genérica para enviar comandos UART
@@ -36,21 +71,21 @@ void create_main_screen(lv_obj_t *scr) {
     lv_obj_set_style_bg_opa(bg, LV_OPA_COVER, LV_PART_MAIN);
 
     // Temperaturas
-    lv_obj_t *label_temp1 = lv_label_create(scr);
-    lv_label_set_text(label_temp1, "T1: 25°C");
+    label_temp1 = lv_label_create(scr);
+    lv_label_set_text(label_temp1, "T1: -- °C");
     lv_obj_set_style_text_color(label_temp1, lv_color_hex(0xFFA500), 0); // Naranja
     lv_obj_set_style_text_font(label_temp1, &lv_font_montserrat_14, 0);
     lv_obj_align(label_temp1, LV_ALIGN_TOP_LEFT, 50, 80); // Alineado a la izquierda
 
-    lv_obj_t *label_temp2 = lv_label_create(scr);
-    lv_label_set_text(label_temp2, "T2: 26°C");
+    label_temp2 = lv_label_create(scr);
+    lv_label_set_text(label_temp2, "T2: -- °C");
     lv_obj_set_style_text_color(label_temp2, lv_color_hex(0xFFA500), 0); // Naranja
     lv_obj_set_style_text_font(label_temp2, &lv_font_montserrat_14, 0);
     lv_obj_align(label_temp2, LV_ALIGN_TOP_LEFT, 50, 110); // Alineado debajo del primero
 
     // Volumen
-    lv_obj_t *label_volume = lv_label_create(scr);
-    lv_label_set_text(label_volume, "Volumen: XX ml");
+    label_volume = lv_label_create(scr);
+    lv_label_set_text(label_volume, "Volumen: -- ml");
     lv_obj_set_style_text_color(label_volume, lv_color_hex(0xFFA500), 0); // Naranja
     lv_obj_set_style_text_font(label_volume, &lv_font_montserrat_14, 0);
     lv_obj_align(label_volume, LV_ALIGN_TOP_LEFT, 50, 140); // Alineado debajo del segundo
