@@ -15,6 +15,10 @@
 #include "uart_config.h"
 
 // #define APP_LCD_LVGL_FULL_REFRESH 0
+#include "translations.h"
+
+// Idioma global
+const char *current_language = "es";  // Inicializa el idioma a español
 
 // codigo de navegación
 lv_obj_t *main_screen;
@@ -247,10 +251,15 @@ void app_main(void)
     create_settings_screen(settings_screen); // Inicializar contenido de la pantalla de ajustes
 
     // Crear el panel de navegación en ambas pantallas
-    lvgl_port_lock(0);
-    create_nav_panel(main_screen, go_to_main_screen, go_to_settings_screen, go_back);
-    create_nav_panel(settings_screen, go_to_main_screen, go_to_settings_screen, go_back);
-    lvgl_port_unlock();
+    // Crear el panel de navegación en ambas pantallas
+    // Almacenar las instancias de NavPanel
+    NavPanel *main_nav = create_nav_panel(main_screen, go_to_main_screen, go_to_settings_screen, go_back);
+    NavPanel *settings_nav = create_nav_panel(settings_screen, go_to_main_screen, go_to_settings_screen, go_back);
+
+    if (!main_nav || !settings_nav) {
+        ESP_LOGE(TAG, "No se pudo crear uno o ambos paneles de navegación");
+        // Manejar el error según corresponda
+    }
 
     // Mostrar la pantalla principal al inicio
     lv_scr_load(main_screen);

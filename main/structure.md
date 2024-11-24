@@ -10,4 +10,8 @@
     └── nav_panel.h
     └── screens.c
     └── screens.h
+    └── structure.md
+    └── translations.c
+    └── translations.h
+    └── uart_config.h
 ```
