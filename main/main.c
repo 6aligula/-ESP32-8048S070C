@@ -14,7 +14,9 @@
 #include "driver/uart.h"
 #include "uart_config.h"
 
-// #define APP_LCD_LVGL_FULL_REFRESH 0
+#include "lvgl.h" // Asegúrate de incluir el encabezado de LVGL
+LV_FONT_DECLARE(lv_font_montserrat_20); // Declarar la fuente habilitada
+
 
 // codigo de navegación
 lv_obj_t *main_screen;

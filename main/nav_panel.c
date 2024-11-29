@@ -17,12 +17,17 @@ lv_obj_t *create_nav_panel(lv_obj_t *parent, nav_callback_t home_cb, nav_callbac
     lv_obj_set_style_text_font(logo, &lv_font_montserrat_14, 0);
     lv_obj_align(logo, LV_ALIGN_LEFT_MID, 10, 0); // Alineado a la izquierda
 
-    // Agregar el título (LOG MCU) al panel
+    // Crear un estilo para el título
+    static lv_style_t style_title;
+    lv_style_init(&style_title);
+    lv_style_set_text_font(&style_title, &lv_font_montserrat_20); // Aplicar la fuente de 20 píxeles
+
+    // Crear el título y aplicar el estilo
     lv_obj_t *title = lv_label_create(nav_panel);
     lv_label_set_text(title, "MCV");
-    lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), 0); // Blanco
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_14, 0);
-    lv_obj_align(title, LV_ALIGN_LEFT_MID, 70, 0); // Alineado cerca del logo
+    lv_obj_add_style(title, &style_title, 0);
+    lv_obj_align(title, LV_ALIGN_LEFT_MID, 70, 0);
+
 
     // Botón de inicio
     lv_obj_t *btn_home = lv_btn_create(nav_panel);
