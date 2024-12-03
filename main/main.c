@@ -11,6 +11,7 @@
 
 #include "nav_panel.h"
 #include "screens.h"
+#include "settings_screen.h"
 #include "driver/uart.h"
 #include "uart_config.h"
 
