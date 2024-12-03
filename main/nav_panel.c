@@ -1,4 +1,5 @@
 #include "nav_panel.h"
+#include "logo.h" // Archivo generado con la imagen (debe estar definido como LVGL compatible)
 
 lv_obj_t *create_nav_panel(lv_obj_t *parent, nav_callback_t home_cb, nav_callback_t settings_cb, nav_callback_t back_cb) {
     // Crear el panel de navegación
@@ -10,12 +11,14 @@ lv_obj_t *create_nav_panel(lv_obj_t *parent, nav_callback_t home_cb, nav_callbac
     lv_obj_set_style_bg_color(nav_panel, lv_palette_main(LV_PALETTE_BLUE), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(nav_panel, LV_OPA_COVER, LV_PART_MAIN);
 
-    // Agregar el logo al panel
-    lv_obj_t *logo = lv_label_create(nav_panel);
-    lv_label_set_text(logo, "LOGO");
-    lv_obj_set_style_text_color(logo, lv_color_hex(0xFFFFFF), 0); // Blanco
-    lv_obj_set_style_text_font(logo, &lv_font_montserrat_14, 0);
-    lv_obj_align(logo, LV_ALIGN_LEFT_MID, 10, 0); // Alineado a la izquierda
+    // Agregar el logo como imagen al panel
+    lv_obj_t *logo_img = lv_img_create(nav_panel); // Cambiado el nombre del objeto para evitar confusión
+    lv_img_set_src(logo_img, &logo); // Usamos el descriptor `logo` del archivo generado
+    lv_obj_align(logo_img, LV_ALIGN_LEFT_MID, 10, 0); // Alineado a la izquierda
+
+    // Escalar la imagen si es más grande de lo necesario
+    lv_img_set_zoom(logo_img, 128); // Escala al 50% del tamaño original
+
 
     // Crear un estilo para el título
     static lv_style_t style_title;
@@ -26,7 +29,7 @@ lv_obj_t *create_nav_panel(lv_obj_t *parent, nav_callback_t home_cb, nav_callbac
     lv_obj_t *title = lv_label_create(nav_panel);
     lv_label_set_text(title, "MCV");
     lv_obj_add_style(title, &style_title, 0);
-    lv_obj_align(title, LV_ALIGN_LEFT_MID, 70, 0);
+    lv_obj_align(title, LV_ALIGN_LEFT_MID, 90, 0);
 
 
     // Botón de inicio
