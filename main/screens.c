@@ -80,26 +80,26 @@ void create_main_screen(lv_obj_t *scr) {
     lv_label_set_text(label_temp1, "T1: -- °C");
     lv_obj_set_style_text_color(label_temp1, lv_color_hex(0xFFA500), 0); // Naranja
     lv_obj_set_style_text_font(label_temp1, &lv_font_montserrat_20, 0);
-    lv_obj_align(label_temp1, LV_ALIGN_TOP_LEFT, 50, 80); // Alineado a la izquierda
+    lv_obj_align(label_temp1, LV_ALIGN_TOP_LEFT, 50, 100); // Alineado a la izquierda
 
     label_temp2 = lv_label_create(scr);
     lv_label_set_text(label_temp2, "T2: -- °C");
     lv_obj_set_style_text_color(label_temp2, lv_color_hex(0xFFA500), 0); // Naranja
     lv_obj_set_style_text_font(label_temp2, &lv_font_montserrat_20, 0);
-    lv_obj_align(label_temp2, LV_ALIGN_TOP_LEFT, 50, 110); // Alineado debajo del primero
+    lv_obj_align(label_temp2, LV_ALIGN_TOP_LEFT, 50, 130); // Alineado debajo del primero
 
     // Volumen
     label_volume = lv_label_create(scr);
     lv_label_set_text(label_volume, "Volumen: -- ml");
     lv_obj_set_style_text_color(label_volume, lv_color_hex(0xFFA500), 0); // Naranja
     lv_obj_set_style_text_font(label_volume, &lv_font_montserrat_20, 0);
-    lv_obj_align(label_volume, LV_ALIGN_TOP_LEFT, 50, 140); // Alineado debajo del segundo
+    lv_obj_align(label_volume, LV_ALIGN_TOP_LEFT, 50, 160); // Alineado debajo del segundo
 
     // Contadores
     lv_obj_t *counters_box = lv_obj_create(scr);
     lv_obj_set_size(counters_box, 170, 120);
     lv_obj_set_style_bg_color(counters_box, lv_color_hex(0xDDA0DD), 0); // Color púrpura claro
-    lv_obj_align(counters_box, LV_ALIGN_TOP_RIGHT, -10, 60); // Alineado a la derecha
+    lv_obj_align(counters_box, LV_ALIGN_TOP_RIGHT, -10, 90); // Alineado a la derecha
 
     lv_obj_t *label_tot = lv_label_create(counters_box);
     lv_label_set_text(label_tot, "TOT: 35047");
@@ -114,7 +114,7 @@ void create_main_screen(lv_obj_t *scr) {
     // Botón Reset (movido fuera del contenedor y más abajo)
     lv_obj_t *btn_reset_counter = lv_btn_create(scr);
     lv_obj_set_size(btn_reset_counter, 100, 40); // Tamaño del botón
-    lv_obj_align(btn_reset_counter, LV_ALIGN_TOP_RIGHT, -10, 190); // Alineado debajo de los contadores
+    lv_obj_align(btn_reset_counter, LV_ALIGN_TOP_RIGHT, -10, 210); // Alineado debajo de los contadores
     lv_obj_t *label_reset = lv_label_create(btn_reset_counter);
     lv_label_set_text(label_reset, "Reset");
     lv_obj_add_style(label_reset, &style_button_label, 0); // Aplicar el estilo
