@@ -70,48 +70,55 @@ void create_main_screen(lv_obj_t *scr) {
     lv_obj_set_style_bg_color(bg, lv_color_hex(0xf0f0f0), LV_PART_MAIN); // Fondo gris claro
     lv_obj_set_style_bg_opa(bg, LV_OPA_COVER, LV_PART_MAIN);
 
+    // Crear un estilo para los textos de los botones
+    static lv_style_t style_button_label;
+    lv_style_init(&style_button_label);
+    lv_style_set_text_font(&style_button_label, &lv_font_montserrat_20); // Fuente Montserrat 20 píxeles
+
     // Temperaturas
     label_temp1 = lv_label_create(scr);
     lv_label_set_text(label_temp1, "T1: -- °C");
     lv_obj_set_style_text_color(label_temp1, lv_color_hex(0xFFA500), 0); // Naranja
-    lv_obj_set_style_text_font(label_temp1, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(label_temp1, &lv_font_montserrat_20, 0);
     lv_obj_align(label_temp1, LV_ALIGN_TOP_LEFT, 50, 80); // Alineado a la izquierda
 
     label_temp2 = lv_label_create(scr);
     lv_label_set_text(label_temp2, "T2: -- °C");
     lv_obj_set_style_text_color(label_temp2, lv_color_hex(0xFFA500), 0); // Naranja
-    lv_obj_set_style_text_font(label_temp2, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(label_temp2, &lv_font_montserrat_20, 0);
     lv_obj_align(label_temp2, LV_ALIGN_TOP_LEFT, 50, 110); // Alineado debajo del primero
 
     // Volumen
     label_volume = lv_label_create(scr);
     lv_label_set_text(label_volume, "Volumen: -- ml");
     lv_obj_set_style_text_color(label_volume, lv_color_hex(0xFFA500), 0); // Naranja
-    lv_obj_set_style_text_font(label_volume, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(label_volume, &lv_font_montserrat_20, 0);
     lv_obj_align(label_volume, LV_ALIGN_TOP_LEFT, 50, 140); // Alineado debajo del segundo
 
     // Contadores
     lv_obj_t *counters_box = lv_obj_create(scr);
-    lv_obj_set_size(counters_box, 150, 100);
+    lv_obj_set_size(counters_box, 170, 120);
     lv_obj_set_style_bg_color(counters_box, lv_color_hex(0xDDA0DD), 0); // Color púrpura claro
     lv_obj_align(counters_box, LV_ALIGN_TOP_RIGHT, -10, 60); // Alineado a la derecha
 
     lv_obj_t *label_tot = lv_label_create(counters_box);
     lv_label_set_text(label_tot, "TOT: 35047");
-    lv_obj_set_style_text_font(label_tot, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(label_tot, &lv_font_montserrat_20, 0);
     lv_obj_align(label_tot, LV_ALIGN_TOP_LEFT, 10, 10); // Alineado dentro del contenedor
 
     lv_obj_t *label_lot = lv_label_create(counters_box);
     lv_label_set_text(label_lot, "LOT: 2300");
-    lv_obj_set_style_text_font(label_lot, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(label_lot, &lv_font_montserrat_20, 0);
     lv_obj_align(label_lot, LV_ALIGN_TOP_LEFT, 10, 40); // Alineado debajo del primer contador
 
     // Botón Reset (movido fuera del contenedor y más abajo)
     lv_obj_t *btn_reset_counter = lv_btn_create(scr);
     lv_obj_set_size(btn_reset_counter, 100, 40); // Tamaño del botón
-    lv_obj_align(btn_reset_counter, LV_ALIGN_TOP_RIGHT, -10, 170); // Alineado debajo de los contadores
+    lv_obj_align(btn_reset_counter, LV_ALIGN_TOP_RIGHT, -10, 190); // Alineado debajo de los contadores
     lv_obj_t *label_reset = lv_label_create(btn_reset_counter);
     lv_label_set_text(label_reset, "Reset");
+    lv_obj_add_style(label_reset, &style_button_label, 0); // Aplicar el estilo
+    lv_obj_center(label_reset); // Centrar la etiqueta dentro del botón
 
     // Alarmas y errores
     lv_obj_t *alarm_box = lv_obj_create(scr);
@@ -121,7 +128,7 @@ void create_main_screen(lv_obj_t *scr) {
 
     lv_obj_t *label_alarm = lv_label_create(alarm_box);
     lv_label_set_text(label_alarm, "Alarmas / Errores:\n- Ninguna");
-    lv_obj_set_style_text_font(label_alarm, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(label_alarm, &lv_font_montserrat_20, 0);
     lv_obj_align(label_alarm, LV_ALIGN_TOP_LEFT, 10, 10); // Alineado dentro del cuadro de alarmas
 
     // Crear botones y asignar el callback genérico
@@ -132,17 +139,20 @@ void create_main_screen(lv_obj_t *scr) {
         int offset_x;
     } buttons[] = {
         {"Start", lv_color_hex(0x32CD32), LV_ALIGN_BOTTOM_RIGHT, -10},
-        {"Stop", lv_color_hex(0xFF4500), LV_ALIGN_BOTTOM_RIGHT, -120},
-        {"Reset", lv_color_hex(0xFFA500), LV_ALIGN_BOTTOM_RIGHT, -230},
+        {"Stop", lv_color_hex(0xFF4500), LV_ALIGN_BOTTOM_RIGHT, -150},
+        {"Reset", lv_color_hex(0xFFA500), LV_ALIGN_BOTTOM_RIGHT, -300},
     };
 
     for (int i = 0; i < 3; i++) {
         lv_obj_t *btn = lv_btn_create(scr);
-        lv_obj_set_size(btn, 100, 50);
+        lv_obj_set_size(btn, 120, 50);
         lv_obj_set_style_bg_color(btn, buttons[i].color, LV_PART_MAIN);
         lv_obj_align(btn, buttons[i].align, buttons[i].offset_x, -10);
+        // Crear la etiqueta para el botón
         lv_obj_t *label = lv_label_create(btn);
         lv_label_set_text(label, buttons[i].label);
+        lv_obj_add_style(label, &style_button_label, 0); // Aplicar el estilo al texto del botón
+        lv_obj_center(label); // Centrar la etiqueta dentro del botón
         lv_obj_add_event_cb(btn, button_event_handler, LV_EVENT_CLICKED, NULL);
     }
 
