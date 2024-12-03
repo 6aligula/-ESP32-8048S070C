@@ -31,30 +31,38 @@ lv_obj_t *create_nav_panel(lv_obj_t *parent, nav_callback_t home_cb, nav_callbac
     lv_obj_add_style(title, &style_title, 0);
     lv_obj_align(title, LV_ALIGN_LEFT_MID, 90, 0);
 
+    // Crear un estilo para los textos de los botones
+    static lv_style_t style_button_label;
+    lv_style_init(&style_button_label);
+    lv_style_set_text_font(&style_button_label, &lv_font_montserrat_20); // Fuente Montserrat 20 píxeles
 
     // Botón de inicio
     lv_obj_t *btn_home = lv_btn_create(nav_panel);
-    lv_obj_set_size(btn_home, 80, 30);
+    lv_obj_set_size(btn_home, 110, 50);
     lv_obj_align(btn_home, LV_ALIGN_CENTER, -120, 0); // Alineado cerca del centro
     lv_obj_t *label_home = lv_label_create(btn_home);
     lv_label_set_text(label_home, "Inicio");
+    lv_obj_add_style(label_home, &style_button_label, 0); // Aplicar el estilo
+    lv_obj_center(label_home); // Centrar la etiqueta dentro del botón
     lv_obj_add_event_cb(btn_home, (lv_event_cb_t)home_cb, LV_EVENT_CLICKED, NULL);
 
     // Botón de ajustes
     lv_obj_t *btn_settings = lv_btn_create(nav_panel);
-    lv_obj_set_size(btn_settings, 80, 30);
+    lv_obj_set_size(btn_settings, 110, 50);
     lv_obj_align(btn_settings, LV_ALIGN_CENTER, 20, 0); // Alineado cerca del centro
     lv_obj_t *label_settings = lv_label_create(btn_settings);
     lv_label_set_text(label_settings, "Ajustes");
-    lv_obj_align(label_settings, LV_ALIGN_CENTER, -3, 0); // Mover texto ligeramente
+    lv_obj_add_style(label_settings, &style_button_label, 0); // Aplicar el estilo
+    // lv_obj_align(label_settings, LV_ALIGN_CENTER, -3, 0); // Mover texto ligeramente
     lv_obj_add_event_cb(btn_settings, (lv_event_cb_t)settings_cb, LV_EVENT_CLICKED, NULL);
 
     // Botón de atrás
     lv_obj_t *btn_back = lv_btn_create(nav_panel);
-    lv_obj_set_size(btn_back, 80, 30);
+    lv_obj_set_size(btn_back, 110, 50);
     lv_obj_align(btn_back, LV_ALIGN_RIGHT_MID, -10, 0); // Alineado a la derecha
     lv_obj_t *label_back = lv_label_create(btn_back);
     lv_label_set_text(label_back, "Atras");
+    lv_obj_add_style(label_back, &style_button_label, 0); // Aplicar el estilo
     lv_obj_add_event_cb(btn_back, (lv_event_cb_t)back_cb, LV_EVENT_CLICKED, NULL);
 
     return nav_panel;
