@@ -142,6 +142,12 @@ void create_settings_screen(lv_obj_t *scr) {
     lv_obj_set_style_text_color(title, lv_color_hex(0x000000), 0); // Negro
     lv_obj_align(title, LV_ALIGN_TOP_LEFT, 50, 100); // Título inicia en 100 px
 
+    // Añadir el Checkbox llamado "check" alineado a la derecha en la misma fila que el título
+    lv_obj_t *checkbox = lv_checkbox_create(scr);
+    lv_checkbox_set_text(checkbox, "check");
+    lv_obj_add_style(checkbox, &font_style, 0);
+    lv_obj_align(checkbox, LV_ALIGN_TOP_RIGHT, -50, 100); // Ajusta los offsets según sea necesario
+
     // Parámetros
     const char *param_labels[] = {"Parametro 1", "Parametro 2", "Parametro 3", "Parametro 4"};
     int initial_values[] = {50, 100, 75, 25};
