@@ -44,6 +44,11 @@ void create_settings_screen(lv_obj_t *scr) {
         lv_obj_set_style_bg_color(param_row, lv_color_hex(0xF0F0F0), 0); // Gris claro
         lv_obj_align(param_row, LV_ALIGN_TOP_LEFT, 50, margin_top + i * (50 + row_spacing));
 
+        // Eliminar scroll y padding del contenedor
+        lv_obj_clear_flag(param_row, LV_OBJ_FLAG_SCROLLABLE); // Desactivar scroll
+        lv_obj_set_style_pad_all(param_row, 0, LV_PART_MAIN); // Quitar padding
+        lv_obj_set_style_clip_corner(param_row, true, LV_PART_MAIN); // Cortar contenido fuera de límites (opcional)
+
         // Etiqueta del parámetro
         lv_obj_t *label = lv_label_create(param_row);
         lv_label_set_text(label, param_labels[i]);
@@ -58,22 +63,22 @@ void create_settings_screen(lv_obj_t *scr) {
 
         // Botón para disminuir el valor
         lv_obj_t *btn_decrement = lv_btn_create(param_row);
-        lv_obj_set_size(btn_decrement, 30, 30);
-        lv_obj_set_style_bg_color(btn_decrement, lv_color_hex(0xFFAAAA), LV_PART_MAIN); // Rojo claro
+        lv_obj_set_size(btn_decrement, 40, 40);
+        lv_obj_set_style_bg_color(btn_decrement, lv_color_hex(0xFF0000), LV_PART_MAIN); // Rojo puro
         lv_obj_align(btn_decrement, LV_ALIGN_RIGHT_MID, -60, 0);
         lv_obj_t *label_decrement = lv_label_create(btn_decrement);
-        lv_label_set_text(label_decrement, "▼");
+        lv_label_set_text(label_decrement, "-");
         lv_obj_add_style(label_decrement, &font_style, 0);
         lv_obj_center(label_decrement);
         lv_obj_add_event_cb(btn_decrement, decrement_callback, LV_EVENT_CLICKED, value_label);
 
         // Botón para aumentar el valor
         lv_obj_t *btn_increment = lv_btn_create(param_row);
-        lv_obj_set_size(btn_increment, 30, 30);
-        lv_obj_set_style_bg_color(btn_increment, lv_color_hex(0xAAFFAA), LV_PART_MAIN); // Verde claro
+        lv_obj_set_size(btn_increment, 40, 40);
+        lv_obj_set_style_bg_color(btn_increment, lv_color_hex(0x00FF00), LV_PART_MAIN); // Verde puro
         lv_obj_align(btn_increment, LV_ALIGN_RIGHT_MID, -10, 0);
         lv_obj_t *label_increment = lv_label_create(btn_increment);
-        lv_label_set_text(label_increment, "▲");
+        lv_label_set_text(label_increment, "+");
         lv_obj_add_style(label_increment, &font_style, 0);
         lv_obj_center(label_increment);
         lv_obj_add_event_cb(btn_increment, increment_callback, LV_EVENT_CLICKED, value_label);
