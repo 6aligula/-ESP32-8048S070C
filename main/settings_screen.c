@@ -142,6 +142,17 @@ void create_settings_screen(lv_obj_t *scr) {
     lv_obj_set_style_text_color(title, lv_color_hex(0x000000), 0); // Negro
     lv_obj_align(title, LV_ALIGN_TOP_LEFT, 50, 100); // Título inicia en 100 px
 
+    // Contenedor desplazable para parámetros
+    lv_obj_t *param_scroll = lv_obj_create(scr);
+    lv_obj_set_size(param_scroll, LV_PCT(100), LV_VER_RES - 200); // Tamaño ajustado
+    lv_obj_align(param_scroll, LV_ALIGN_TOP_MID, 0, 150);         // Debajo del título
+    lv_obj_set_scroll_dir(param_scroll, LV_DIR_VER);             // Scroll solo vertical
+    lv_obj_set_style_bg_opa(param_scroll, LV_OPA_TRANSP, 0);     // Fondo transparente
+    //lv_obj_set_scroll_snap_y(param_scroll, LV_SCROLL_SNAP_START); // Snap ajustado al inicio
+    lv_obj_set_scroll_snap_y(param_scroll, LV_SCROLL_SNAP_NONE); // Sin Snap
+    lv_obj_set_style_pad_top(param_scroll, 0, LV_PART_MAIN);     // Sin padding superior
+    lv_obj_set_style_pad_bottom(param_scroll, 0, LV_PART_MAIN);  // Sin padding inferior
+
     // Añadir el Checkbox llamado "check" alineado a la derecha en la misma fila que el título
     lv_obj_t *checkbox = lv_checkbox_create(scr);
     lv_checkbox_set_text(checkbox, "check");
@@ -149,27 +160,24 @@ void create_settings_screen(lv_obj_t *scr) {
     lv_obj_align(checkbox, LV_ALIGN_TOP_RIGHT, -50, 100); // Ajusta los offsets según sea necesario
 
     // Parámetros
-    const char *param_labels[] = {"Parametro 1", "Parametro 2", "Parametro 3", "Parametro 4"};
-    int initial_values[] = {50, 100, 75, 25};
+    const char *param_labels[] = {"Parametro 1", "Parametro 2", "Parametro 3", "Parametro 4", "Parametro 5", "Parametro 6", "Parametro 7", "Parametro 8"};
+    int initial_values[] = {50, 100, 75, 25, 33, 77, 34, 32};
     const int num_params = sizeof(initial_values) / sizeof(initial_values[0]);
 
     // Margen superior inicial después del título
-    int margin_top = 150; // El primer parámetro comienza debajo del título
     int row_spacing = 15;  // Espaciado entre filas
 
     for (int i = 0; i < num_params; i++) {
         // Crear contenedor para cada parámetro
-        lv_obj_t *param_row = lv_obj_create(scr);
+        lv_obj_t *param_row = lv_obj_create(param_scroll);
         lv_obj_set_size(param_row, LV_PCT(90), 50);
-        // lv_obj_add_style(param_row, &lv_style_plain_color, LV_PART_MAIN); // Eliminar esta línea
         lv_obj_set_style_bg_color(param_row, lv_color_hex(0xF0F0F0), LV_PART_MAIN); // Gris claro
         lv_obj_set_style_bg_opa(param_row, LV_OPA_COVER, LV_PART_MAIN);
-        lv_obj_align(param_row, LV_ALIGN_TOP_LEFT, 50, margin_top + i * (50 + row_spacing));
-
-        // Eliminar scroll y padding del contenedor
-        lv_obj_clear_flag(param_row, LV_OBJ_FLAG_SCROLLABLE); // Desactivar scroll
-        lv_obj_set_style_pad_all(param_row, 0, LV_PART_MAIN); // Quitar padding
-        lv_obj_set_style_clip_corner(param_row, true, LV_PART_MAIN); // Cortar contenido fuera de límites (opcional)
+        lv_obj_align(param_row, LV_ALIGN_TOP_MID, 0, i * (50 + row_spacing));
+        // Eliminar padding interno de cada fila
+        lv_obj_set_style_pad_all(param_row, 0, LV_PART_MAIN);
+        lv_obj_set_style_pad_top(param_row, 0, LV_PART_MAIN);
+        lv_obj_set_style_pad_bottom(param_row, 0, LV_PART_MAIN);
 
         // Etiqueta del parámetro
         lv_obj_t *label = lv_label_create(param_row);
