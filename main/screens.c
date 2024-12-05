@@ -9,10 +9,37 @@ static lv_obj_t *label_temp1;
 static lv_obj_t *label_temp2;
 static lv_obj_t *label_volume;
 
+// editor numeric
+void create_spinbox(void) {
+    // Crear el spinbox
+    lv_obj_t * spinbox = lv_spinbox_create(lv_scr_act());
+
+    // Configurar el rang del spinbox (mínim i màxim)
+    lv_spinbox_set_range(spinbox, 0, 100);  // Valor entre 0 i 100
+
+    // Configurar el valor inicial
+    lv_spinbox_set_value(spinbox, 50);  // Valor inicial 50
+
+    // Configurar l'increment (quantitat de canvi per pas)
+    lv_spinbox_set_step(spinbox, 1);  // Increment de 1 unitat per pas
+
+    // Centrar el spinbox a la pantalla
+    lv_obj_align(spinbox, LV_ALIGN_CENTER, 0, 0);
+
+    // Configurar el nombre de dígits i decimals
+    lv_spinbox_set_digit_format(spinbox, 3, 0);  // 3 dígits i 0 decimals
+
+    // Personalitzar l'estil (color de text)
+    lv_style_t style;
+    lv_style_init(&style);
+    lv_style_set_text_color(&style, lv_color_hex(0xFF0000));  // Text de color vermell
+    lv_obj_add_style(spinbox, &style, LV_PART_MAIN);
+}
+
 // Tarea para recibir datos del UART
 void uart_receive_task(void *arg) {
     char rx_buffer[128];
-    const TickType_t delay_ticks = pdMS_TO_TICKS(5000); // 5 segundos en ticks
+    const TickType_t delay_ticks = pdMS_TO_TICKS(100); // 5 segundos en ticks
     while (true) {
         // Leer datos del UART
         int length = uart_read_bytes(UART_PORT_NUM, (uint8_t *)rx_buffer, sizeof(rx_buffer) - 1, pdMS_TO_TICKS(1000));
@@ -20,19 +47,40 @@ void uart_receive_task(void *arg) {
             rx_buffer[length] = '\0'; // Asegurar terminación de cadena
             float t1, t2;
             int vol;
+            char RCVdata[100];
+
+
 
             // Parsear la trama recibida
-            if (sscanf(rx_buffer, "DATA:T1=%f;T2=%f;VOL=%d;", &t1, &t2, &vol) == 3) {
-                ESP_LOGI("UART", "Recibido - T1: %.2f, T2: %.2f, Vol: %d", t1, t2, vol);
+            ESP_LOGI("UART", ">>RCV>>%s\n", rx_buffer);
 
-                // Actualizar etiquetas en la pantalla (debe ser en el contexto de LVGL)
-                lvgl_port_lock(0); // Bloquear para actualizar desde otra tarea
-                lv_label_set_text_fmt(label_temp1, "T1: %.2f °C", t1);
-                lv_label_set_text_fmt(label_temp2, "T2: %.2f °C", t2);
-                lv_label_set_text_fmt(label_volume, "Volumen: %d ml", vol);
-                lvgl_port_unlock();
-            } else {
-                ESP_LOGW("UART", "Trama no válida: %s", rx_buffer);
+            if (strncmp(rx_buffer, "PARAM", 5) == 0)
+            {
+                //ESP_LOGI("UART", "PARAM: %s\n", rx_buffer); 
+                ESP_LOGI("UART", "PARAM\n"); 
+            }
+
+            if (strncmp(rx_buffer, "DATA", 4) == 0)
+            {
+                //ESP_LOGI("UART", "DATA: %s\n", rx_buffer);
+                ESP_LOGI("UART", "DATA\n"); 
+                // decode
+                if (sscanf(rx_buffer, "DATA:T1=%f;T2=%f;VOL=%d;", &t1, &t2, &vol) == 3)
+                {
+                    ESP_LOGI("UART", "-->DECODED: - T1: %.2f, T2: %.2f, Vol: %d", t1, t2, vol);
+
+                    // Actualizar etiquetas en la pantalla (debe ser en el contexto de LVGL)
+                    lvgl_port_lock(0); // Bloquear para actualizar desde otra tarea
+                    lv_label_set_text_fmt(label_temp1, "T1: %.2f °C", t1);
+                    lv_label_set_text_fmt(label_temp2, "T2: %.2f °C", t2);
+                    lv_label_set_text_fmt(label_volume, "Volumen: %d ml", vol);
+                    lvgl_port_unlock();
+                }
+                else
+                {
+                    ESP_LOGW("UART", "Trama no DATA válida: %s", rx_buffer);
+                }
+
             }
         }
         vTaskDelay(delay_ticks);
@@ -51,15 +99,18 @@ void button_event_handler(lv_event_t *e) {
     lv_obj_t *btn = lv_event_get_target(e); // Obtiene el botón que disparó el evento
     const char *btn_label = lv_label_get_text(lv_obj_get_child(btn, 0)); // Obtiene el texto del botón
 
-    if (strcmp(btn_label, "Start") == 0) {
+    if (strcmp(btn_label, "START") == 0) {
         ESP_LOGI("BUTTON", "Botón Start presionado.");
-        send_command("CMD:START\n");
-    } else if (strcmp(btn_label, "Stop") == 0) {
+        send_command("STA01*");
+    } else if (strcmp(btn_label, "STOP") == 0) {
         ESP_LOGI("BUTTON", "Botón Stop presionado.");
-        send_command("CMD:STOP\n");
-    } else if (strcmp(btn_label, "Reset") == 0) {
+        send_command("STO01*");
+    } else if (strcmp(btn_label, "RESET") == 0) {
         ESP_LOGI("BUTTON", "Botón Reset presionado.");
-        send_command("CMD:RESET\n");
+        send_command("RES01*");
+    }else if (strcmp(btn_label, "RST CNT") == 0) {
+        ESP_LOGI("BUTTON", "BTN Reset Counters pressed.");
+        send_command("RSC01*");
     }
 }
 
@@ -116,7 +167,7 @@ void create_main_screen(lv_obj_t *scr) {
     lv_obj_set_size(btn_reset_counter, 100, 40); // Tamaño del botón
     lv_obj_align(btn_reset_counter, LV_ALIGN_TOP_RIGHT, -10, 210); // Alineado debajo de los contadores
     lv_obj_t *label_reset = lv_label_create(btn_reset_counter);
-    lv_label_set_text(label_reset, "Reset");
+    lv_label_set_text(label_reset, "RST CNT");
     lv_obj_add_style(label_reset, &style_button_label, 0); // Aplicar el estilo
     lv_obj_center(label_reset); // Centrar la etiqueta dentro del botón
 
@@ -138,9 +189,9 @@ void create_main_screen(lv_obj_t *scr) {
         lv_align_t align;
         int offset_x;
     } buttons[] = {
-        {"Start", lv_color_hex(0x32CD32), LV_ALIGN_BOTTOM_RIGHT, -10},
-        {"Stop", lv_color_hex(0xFF4500), LV_ALIGN_BOTTOM_RIGHT, -150},
-        {"Reset", lv_color_hex(0xFFA500), LV_ALIGN_BOTTOM_RIGHT, -300},
+        {"START", lv_color_hex(0x32CD32), LV_ALIGN_BOTTOM_RIGHT, -10},
+        {"STOP", lv_color_hex(0xFF4500), LV_ALIGN_BOTTOM_RIGHT, -150},
+        {"RESET", lv_color_hex(0xFFA500), LV_ALIGN_BOTTOM_RIGHT, -300},
     };
 
     for (int i = 0; i < 3; i++) {
@@ -155,5 +206,6 @@ void create_main_screen(lv_obj_t *scr) {
         lv_obj_center(label); // Centrar la etiqueta dentro del botón
         lv_obj_add_event_cb(btn, button_event_handler, LV_EVENT_CLICKED, NULL);
     }
+    //create_spinbox();
 
 }
