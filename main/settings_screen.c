@@ -7,12 +7,25 @@
 #include <string.h>
 #include "uart_utils.h" // Incluye las funciones de UART centralizadas
 
+#define NUM_PARAMS 8
+
+// Arreglo para almacenar las etiquetas de los valores de los parámetros, inicializado a NULL
+lv_obj_t *param_value_labels[NUM_PARAMS] = {NULL};
+
 // Definición de la estructura btn_data_t
-typedef struct {
-    lv_obj_t *label;    // Etiqueta del valor asociado
-    int increment;      // Incremento (positivo o negativo)
-    lv_timer_t *timer;  // Temporizador para manejar mantenimientos prolongados
+typedef struct
+{
+    lv_obj_t *label;   // Etiqueta del valor asociado
+    int increment;     // Incremento (positivo o negativo)
+    lv_timer_t *timer; // Temporizador para manejar mantenimientos prolongados
 } btn_data_t;
+
+// Definición de la estructura para datos de configuración
+typedef struct
+{
+    int params[NUM_PARAMS]; // Almacena los valores de P1 a P8
+    bool chk;               // Almacena el estado del checkbox
+} settings_data_t;
 
 // Funciones de callback para los botones de incremento, decremento y acciones
 static void increment_callback(lv_event_t *e);
@@ -23,22 +36,32 @@ static void button_press_callback(lv_event_t *e);
 static void button_release_callback(lv_event_t *e);
 static void btn_destroy_callback(lv_event_t *e);
 
-lv_obj_t * checkbox;
+// Declaración del objeto checkbox
+lv_obj_t *checkbox;
+
 // Función para actualizar el estado del checkbox
-void actualizar_checkbox(lv_obj_t * checkbox, bool estado) {
-    if (estado) {
-        lv_obj_add_state(checkbox, LV_STATE_CHECKED);   // Marcar el checkbox
+void actualizar_checkbox(lv_obj_t *checkbox, bool estado)
+{
+    if (estado)
+    {
+        lv_obj_add_state(checkbox, LV_STATE_CHECKED); // Marcar el checkbox
         ESP_LOGI("Checkbox", "El checkbox fue marcado programáticamente");
-    } else {
+    }
+    else
+    {
         lv_obj_remove_state(checkbox, LV_STATE_CHECKED); // Desmarcar el checkbox
         ESP_LOGI("Checkbox", "El checkbox fue desmarcado programáticamente");
     }
 }
 
-void clean_data(char *data) {
+// Función para limpiar caracteres no deseados
+void clean_data(char *data)
+{
     char *src = data, *dst = data;
-    while (*src) {
-        if (*src != '\r' && *src != '\n') {
+    while (*src)
+    {
+        if (*src != '\r' && *src != '\n')
+        {
             *dst++ = *src;
         }
         src++;
@@ -46,43 +69,141 @@ void clean_data(char *data) {
     *dst = '\0';
 }
 
+// Función de callback para actualizar la UI de settings
+static void update_settings_ui_callback(void *param)
+{
+    settings_data_t *data = (settings_data_t *)param;
+
+    if (data == NULL)
+    {
+        ESP_LOGE("UPDATE_UI", "Datos nulos en update_settings_ui_callback");
+        return;
+    }
+
+    // Actualizar cada parámetro
+    for (int i = 0; i < NUM_PARAMS; i++)
+    {
+        if (param_value_labels[i] != NULL)
+        {
+            lv_label_set_text_fmt(param_value_labels[i], "%d", data->params[i]);
+            ESP_LOGI("SETTINGS", "Parametro P%d actualizado a: %d", i + 1, data->params[i]);
+        }
+        else
+        {
+            ESP_LOGE("SETTINGS", "Etiqueta del parametro P%d no está inicializada", i + 1);
+        }
+    }
+
+    // Actualizar el checkbox
+    if (checkbox != NULL)
+    {
+        actualizar_checkbox(checkbox, data->chk);
+        ESP_LOGI("SETTINGS", "Checkbox actualizado a: %d", data->chk);
+    }
+    else
+    {
+        ESP_LOGE("SETTINGS", "Checkbox no está inicializado");
+    }
+
+    // Liberar la memoria asignada a data
+    free(data);
+}
+
+// Manejador de datos de configuración
 static void settings_data_handler(const char *data)
 {
     ESP_LOGI("SCREEN", "Handler invocado en settings con: %s", data);
 
     // Limpiar caracteres no deseados
-    char cleaned_data[256];
+    char cleaned_data[512];
     strncpy(cleaned_data, data, sizeof(cleaned_data) - 1);
     cleaned_data[sizeof(cleaned_data) - 1] = '\0';
     clean_data(cleaned_data);
 
     ESP_LOGI("SCREEN", "Datos limpiados: %s", cleaned_data);
 
-    if (strstr(cleaned_data, "SETTINGS") == cleaned_data) {
-        ESP_LOGI("SETTINGS", "Procesando datos de configuración: %s", cleaned_data);
+    // Verificar que la cadena comience con "SETTINGS:"
+    const char *prefix = "SETTINGS:";
+    if (strncmp(cleaned_data, prefix, strlen(prefix)) == 0)
+    {
+        ESP_LOGI("SETTINGS", "Procesando datos de configuración: %s", cleaned_data + strlen(prefix));
 
-        const char *chk_str = strstr(cleaned_data, "CHK=");
-        if (chk_str != NULL) {
-            int chk_value = atoi(chk_str + 4);
+        // Puntero al inicio de los datos después de "SETTINGS:"
+        char *params_str = cleaned_data + strlen(prefix);
 
-            if (checkbox != NULL) {
-                actualizar_checkbox(checkbox, chk_value != 0);
-                ESP_LOGI("SETTINGS", "Checkbox actualizado a: %d", chk_value);
-            } else {
-                ESP_LOGE("SETTINGS", "Checkbox no está inicializado");
-            }
-        } else {
-            ESP_LOGE("SETTINGS", "CHK no encontrado en los datos");
+        // Crear una estructura para almacenar los datos
+        settings_data_t *settings_data = (settings_data_t *)malloc(sizeof(settings_data_t));
+        if (settings_data == NULL)
+        {
+            ESP_LOGE("SETTINGS", "No se pudo asignar memoria para settings_data_t");
+            return;
         }
-    } else {
-        ESP_LOGW("SETTINGS", "Trama ignorada: %s", cleaned_data);
+        memset(settings_data, 0, sizeof(settings_data_t));
+
+        // Tokenizar la cadena por ';' para obtener cada par clave-valor
+        char *token = strtok(params_str, ";");
+        while (token != NULL)
+        {
+            // Buscar la posición del '='
+            char *equals_pos = strchr(token, '=');
+            if (equals_pos != NULL)
+            {
+                // Separar la clave y el valor
+                *equals_pos = '\0';
+                char *key = token;
+                char *value_str = equals_pos + 1;
+                int value = atoi(value_str);
+
+                // Procesar según la clave
+                if (strncmp(key, "P", 1) == 0)
+                {
+                    // Procesar parámetros P1 a P8
+                    int param_num = atoi(key + 1); // Obtener el número después de 'P'
+
+                    if (param_num >= 1 && param_num <= NUM_PARAMS)
+                    {
+                        settings_data->params[param_num - 1] = value;
+                        ESP_LOGI("SETTINGS", "Parametro P%d enviado para actualización: %d", param_num, value);
+                    }
+                    else
+                    {
+                        ESP_LOGW("SETTINGS", "Parametro P%d fuera de rango", param_num);
+                    }
+                }
+                else if (strcmp(key, "CHK") == 0)
+                {
+                    // Procesar el checkbox
+                    settings_data->chk = (value != 0);
+                    ESP_LOGI("SETTINGS", "Checkbox enviado para actualización: %d", value);
+                }
+                else
+                {
+                    ESP_LOGW("SETTINGS", "Clave desconocida: %s", key);
+                }
+            }
+            else
+            {
+                ESP_LOGW("SETTINGS", "Formato de token incorrecto: %s", token);
+            }
+
+            // Obtener el siguiente token
+            token = strtok(NULL, ";");
+        }
+
+        // Programar la actualización de la UI en el contexto seguro de LVGL
+        lv_async_call(update_settings_ui_callback, settings_data);
+    }
+    else
+    {
+        ESP_LOGW("SETTINGS", "Trama ignorada (no comienza con 'SETTINGS:'): %s", cleaned_data);
     }
 }
 
-
 // Función para manejar incrementos o decrementos
-static void update_value(btn_data_t *btn_data) {
-    if (btn_data == NULL || btn_data->label == NULL) {
+static void update_value(btn_data_t *btn_data)
+{
+    if (btn_data == NULL || btn_data->label == NULL)
+    {
         ESP_LOGE("Settings", "btn_data or label is NULL in update_value");
         return;
     }
@@ -91,25 +212,37 @@ static void update_value(btn_data_t *btn_data) {
     int value = atoi(current_text);
     value += btn_data->increment;
 
+    // Opcional: Validar el valor
+    if (value < 0)
+        value = 0;
+    if (value > 100)
+        value = 100;
+
     lv_label_set_text_fmt(btn_data->label, "%d", value);
 }
 
 // Función estática para manejar el temporizador
-static void timer_callback(lv_timer_t *timer) {
+static void timer_callback(lv_timer_t *timer)
+{
     // Utiliza la función de LVGL para obtener el user_data
     btn_data_t *btn_data = (btn_data_t *)lv_timer_get_user_data(timer);
-    if (btn_data != NULL) {
-        update_value(btn_data);  // Actualizar el valor en pasos de 10 o -10
-    } else {
+    if (btn_data != NULL)
+    {
+        update_value(btn_data); // Actualizar el valor en pasos de 10 o -10
+    }
+    else
+    {
         ESP_LOGE("Settings", "btn_data is NULL en timer_callback");
     }
 }
 
 // Callback para botones cuando se mantiene pulsado
-static void button_press_callback(lv_event_t *e) {
+static void button_press_callback(lv_event_t *e)
+{
     btn_data_t *btn_data = (btn_data_t *)lv_event_get_user_data(e);
 
-    if (btn_data == NULL) {
+    if (btn_data == NULL)
+    {
         ESP_LOGE("Settings", "btn_data is NULL en button_press_callback");
         return;
     }
@@ -122,16 +255,19 @@ static void button_press_callback(lv_event_t *e) {
 }
 
 // Callback para soltar el botón
-static void button_release_callback(lv_event_t *e) {
+static void button_release_callback(lv_event_t *e)
+{
     btn_data_t *btn_data = (btn_data_t *)lv_event_get_user_data(e);
 
-    if (btn_data == NULL) {
+    if (btn_data == NULL)
+    {
         ESP_LOGE("Settings", "btn_data is NULL en button_release_callback");
         return;
     }
 
     // Detener el temporizador
-    if (btn_data->timer) {
+    if (btn_data->timer)
+    {
         lv_timer_del(btn_data->timer);
         btn_data->timer = NULL;
     }
@@ -141,31 +277,42 @@ static void button_release_callback(lv_event_t *e) {
 }
 
 // Incrementar el valor en un clic
-static void increment_callback(lv_event_t *e) {
+static void increment_callback(lv_event_t *e)
+{
     btn_data_t *btn_data = (btn_data_t *)lv_event_get_user_data(e);
-    if (btn_data != NULL) {
-        update_value(btn_data);  // Incrementar en pasos de 1
-    } else {
+    if (btn_data != NULL)
+    {
+        update_value(btn_data); // Incrementar en pasos de 1
+    }
+    else
+    {
         ESP_LOGE("Settings", "btn_data is NULL en increment_callback");
     }
 }
 
 // Decrementar el valor en un clic
-static void decrement_callback(lv_event_t *e) {
+static void decrement_callback(lv_event_t *e)
+{
     btn_data_t *btn_data = (btn_data_t *)lv_event_get_user_data(e);
-    if (btn_data != NULL) {
-        update_value(btn_data);  // Decrementar en pasos de 1
-    } else {
+    if (btn_data != NULL)
+    {
+        update_value(btn_data); // Decrementar en pasos de 1
+    }
+    else
+    {
         ESP_LOGE("Settings", "btn_data is NULL en decrement_callback");
     }
 }
 
 // Callback para liberar la memoria cuando se destruye el botón
-static void btn_destroy_callback(lv_event_t *e) {
+static void btn_destroy_callback(lv_event_t *e)
+{
     btn_data_t *btn_data = (btn_data_t *)lv_event_get_user_data(e);
-    if (btn_data != NULL) {
+    if (btn_data != NULL)
+    {
         // Asegurarse de que el temporizador esté detenido
-        if (btn_data->timer) {
+        if (btn_data->timer)
+        {
             lv_timer_del(btn_data->timer);
             btn_data->timer = NULL;
         }
@@ -175,26 +322,31 @@ static void btn_destroy_callback(lv_event_t *e) {
 }
 
 // Función de callback para el checkbox
-static void checkbox_event_handler(lv_event_t * e) {
-    lv_obj_t * checkbox = lv_event_get_target(e);
+static void checkbox_event_handler(lv_event_t *e)
+{
+    lv_obj_t *checkbox = lv_event_get_target(e);
 
-    if (lv_obj_has_state(checkbox, LV_STATE_CHECKED)) {
+    if (lv_obj_has_state(checkbox, LV_STATE_CHECKED))
+    {
         ESP_LOGI("Checkbox", "El checkbox está marcado");
-    } else {
+    }
+    else
+    {
         ESP_LOGI("Checkbox", "El checkbox está desmarcado");
     }
 }
 
-void create_settings_screen(lv_obj_t *scr) {
+// Función para crear la pantalla de ajustes
+void create_settings_screen(lv_obj_t *scr)
+{
     ESP_LOGI("SETTINGS", "Creando pantalla de ajustes");
 
     // Configura el handler para la pantalla de ajustes
     uart_register_handler(settings_data_handler);
-    
+
     // Fondo de la pantalla
     lv_obj_t *bg = lv_obj_create(scr);
     lv_obj_set_size(bg, LV_PCT(100), LV_PCT(100));
-    // lv_obj_add_style(bg, &lv_style_plain_color, LV_PART_MAIN); // Eliminar esta línea
     lv_obj_set_style_bg_color(bg, lv_color_hex(0xFFFFFF), LV_PART_MAIN); // Blanco
     lv_obj_set_style_bg_opa(bg, LV_OPA_COVER, LV_PART_MAIN);
 
@@ -208,18 +360,17 @@ void create_settings_screen(lv_obj_t *scr) {
     lv_label_set_text(title, "Menu de Ajustes");
     lv_obj_add_style(title, &font_style, 0);
     lv_obj_set_style_text_color(title, lv_color_hex(0x000000), 0); // Negro
-    lv_obj_align(title, LV_ALIGN_TOP_LEFT, 50, 100); // Título inicia en 100 px
+    lv_obj_align(title, LV_ALIGN_TOP_LEFT, 50, 100);               // Título inicia en 100 px
 
     // Contenedor desplazable para parámetros
     lv_obj_t *param_scroll = lv_obj_create(scr);
     lv_obj_set_size(param_scroll, LV_PCT(100), LV_VER_RES - 200); // Tamaño ajustado
     lv_obj_align(param_scroll, LV_ALIGN_TOP_MID, 0, 150);         // Debajo del título
-    lv_obj_set_scroll_dir(param_scroll, LV_DIR_VER);             // Scroll solo vertical
-    lv_obj_set_style_bg_opa(param_scroll, LV_OPA_TRANSP, 0);     // Fondo transparente
-    //lv_obj_set_scroll_snap_y(param_scroll, LV_SCROLL_SNAP_START); // Snap ajustado al inicio
-    lv_obj_set_scroll_snap_y(param_scroll, LV_SCROLL_SNAP_NONE); // Sin Snap
-    lv_obj_set_style_pad_top(param_scroll, 0, LV_PART_MAIN);     // Sin padding superior
-    lv_obj_set_style_pad_bottom(param_scroll, 0, LV_PART_MAIN);  // Sin padding inferior
+    lv_obj_set_scroll_dir(param_scroll, LV_DIR_VER);              // Scroll solo vertical
+    lv_obj_set_style_bg_opa(param_scroll, LV_OPA_TRANSP, 0);      // Fondo transparente
+    lv_obj_set_scroll_snap_y(param_scroll, LV_SCROLL_SNAP_NONE);  // Sin Snap
+    lv_obj_set_style_pad_top(param_scroll, 0, LV_PART_MAIN);      // Sin padding superior
+    lv_obj_set_style_pad_bottom(param_scroll, 0, LV_PART_MAIN);   // Sin padding inferior
 
     // Añadir el Checkbox llamado "check" alineado a la derecha en la misma fila que el título
     checkbox = lv_checkbox_create(scr);
@@ -234,9 +385,10 @@ void create_settings_screen(lv_obj_t *scr) {
     const int num_params = sizeof(initial_values) / sizeof(initial_values[0]);
 
     // Margen superior inicial después del título
-    int row_spacing = 15;  // Espaciado entre filas
+    int row_spacing = 15; // Espaciado entre filas
 
-    for (int i = 0; i < num_params; i++) {
+    for (int i = 0; i < num_params; i++)
+    {
         // Crear contenedor para cada parámetro
         lv_obj_t *param_row = lv_obj_create(param_scroll);
         lv_obj_set_size(param_row, LV_PCT(90), 50);
@@ -260,9 +412,16 @@ void create_settings_screen(lv_obj_t *scr) {
         lv_obj_add_style(value_label, &font_style, 0);
         lv_obj_align(value_label, LV_ALIGN_CENTER, 0, 0);
 
+        // Almacenar la referencia en el arreglo global
+        if (i < NUM_PARAMS)
+        {
+            param_value_labels[i] = value_label;
+        }
+
         // Crear estructura de datos para el botón de incremento
         btn_data_t *btn_inc_data = malloc(sizeof(btn_data_t));
-        if (btn_inc_data == NULL) {
+        if (btn_inc_data == NULL)
+        {
             ESP_LOGE("Settings", "Failed to allocate memory for increment button data");
             continue; // O manejar el error según sea necesario
         }
@@ -273,7 +432,6 @@ void create_settings_screen(lv_obj_t *scr) {
         // Crear botón para aumentar el valor
         lv_obj_t *btn_increment = lv_btn_create(param_row);
         lv_obj_set_size(btn_increment, 40, 40);
-        // lv_obj_add_style(btn_increment, &lv_style_plain_color, LV_PART_MAIN); // Eliminar esta línea
         lv_obj_set_style_bg_color(btn_increment, lv_color_hex(0x00FF00), LV_PART_MAIN); // Verde puro
         lv_obj_set_style_bg_opa(btn_increment, LV_OPA_COVER, LV_PART_MAIN);
         lv_obj_align(btn_increment, LV_ALIGN_RIGHT_MID, -10, 0);
@@ -288,7 +446,8 @@ void create_settings_screen(lv_obj_t *scr) {
 
         // Crear estructura de datos para el botón de decremento
         btn_data_t *btn_dec_data = malloc(sizeof(btn_data_t));
-        if (btn_dec_data == NULL) {
+        if (btn_dec_data == NULL)
+        {
             ESP_LOGE("Settings", "Failed to allocate memory for decrement button data");
             // Liberar btn_inc_data si no puedes asignar btn_dec_data
             free(btn_inc_data);
@@ -301,7 +460,6 @@ void create_settings_screen(lv_obj_t *scr) {
         // Crear botón para disminuir el valor
         lv_obj_t *btn_decrement = lv_btn_create(param_row);
         lv_obj_set_size(btn_decrement, 40, 40);
-        // lv_obj_add_style(btn_decrement, &lv_style_plain_color, LV_PART_MAIN); // Eliminar esta línea
         lv_obj_set_style_bg_color(btn_decrement, lv_color_hex(0xFF0000), LV_PART_MAIN); // Rojo puro
         lv_obj_set_style_bg_opa(btn_decrement, LV_OPA_COVER, LV_PART_MAIN);
         lv_obj_align(btn_decrement, LV_ALIGN_RIGHT_MID, -60, 0);
@@ -315,7 +473,7 @@ void create_settings_screen(lv_obj_t *scr) {
         lv_obj_add_event_cb(btn_decrement, btn_destroy_callback, LV_EVENT_DELETE, btn_dec_data);
     }
 
-    // Botón de "Pedir valores actuales"
+        // Botón de "Pedir valores actuales"
     lv_obj_t *btn_request = lv_btn_create(scr);
     lv_obj_set_size(btn_request, 230, 50);
     // lv_obj_add_style(btn_request, &lv_style_plain_color, LV_PART_MAIN); // Eliminar esta línea
@@ -342,15 +500,16 @@ void create_settings_screen(lv_obj_t *scr) {
     lv_obj_center(label_apply);
     lv_obj_add_event_cb(btn_apply, apply_changes_callback, LV_EVENT_CLICKED, NULL);
 }
-
 // Callback para aplicar cambios
-static void apply_changes_callback(lv_event_t *e) {
+static void apply_changes_callback(lv_event_t *e)
+{
     ESP_LOGI("Settings", "Apply Changes clicked");
     send_command("SPA*"); // Enviar comando por UART usando función centralizada
 }
 
 // Callback para solicitar valores actuales
-static void request_values_callback(lv_event_t *e) {
+static void request_values_callback(lv_event_t *e)
+{
     ESP_LOGI("Settings", "Request Current Values clicked");
     // Aquí puedes implementar la lógica para solicitar valores actuales por UART
     send_command("GET_SETTINGS*"); // Enviar comando por UART usando función centralizada
