@@ -4,94 +4,48 @@
 #include "uart_config.h"
 #include "esp_log.h"
 #include "esp_lvgl_port.h"
+#include "uart_utils.h"
 
 static lv_obj_t *label_temp1;
 static lv_obj_t *label_temp2;
 static lv_obj_t *label_volume;
 
-// editor numeric
-void create_spinbox(void) {
-    // Crear el spinbox
-    lv_obj_t * spinbox = lv_spinbox_create(lv_scr_act());
+// Definir la estructura para los datos UART
+typedef struct {
+    float t1;
+    float t2;
+    int vol;
+} uart_data_t;
 
-    // Configurar el rang del spinbox (mínim i màxim)
-    lv_spinbox_set_range(spinbox, 0, 100);  // Valor entre 0 i 100
+static uart_data_t latest_data;
 
-    // Configurar el valor inicial
-    lv_spinbox_set_value(spinbox, 50);  // Valor inicial 50
-
-    // Configurar l'increment (quantitat de canvi per pas)
-    lv_spinbox_set_step(spinbox, 1);  // Increment de 1 unitat per pas
-
-    // Centrar el spinbox a la pantalla
-    lv_obj_align(spinbox, LV_ALIGN_CENTER, 0, 0);
-
-    // Configurar el nombre de dígits i decimals
-    lv_spinbox_set_digit_format(spinbox, 3, 0);  // 3 dígits i 0 decimals
-
-    // Personalitzar l'estil (color de text)
-    lv_style_t style;
-    lv_style_init(&style);
-    lv_style_set_text_color(&style, lv_color_hex(0xFF0000));  // Text de color vermell
-    lv_obj_add_style(spinbox, &style, LV_PART_MAIN);
+// Función de callback para actualizar las etiquetas
+static void update_labels_callback(void *param) {
+    uart_data_t *data = (uart_data_t *)param;
+    lv_label_set_text_fmt(label_temp1, "T1: %.2f °C", data->t1);
+    lv_label_set_text_fmt(label_temp2, "T2: %.2f °C", data->t2);
+    lv_label_set_text_fmt(label_volume, "Volumen: %d ml", data->vol);
 }
 
-// Tarea para recibir datos del UART
-void uart_receive_task(void *arg) {
-    char rx_buffer[128];
-    const TickType_t delay_ticks = pdMS_TO_TICKS(100); // 5 segundos en ticks
-    while (true) {
-        // Leer datos del UART
-        int length = uart_read_bytes(UART_PORT_NUM, (uint8_t *)rx_buffer, sizeof(rx_buffer) - 1, pdMS_TO_TICKS(1000));
-        if (length > 0) {
-            rx_buffer[length] = '\0'; // Asegurar terminación de cadena
-            float t1, t2;
-            int vol;
-            char RCVdata[100];
+static void screen_data_handler(const char *data) {
+    ESP_LOGI("SCREEN", "Handler invocado con: %s", data);
+    if (strncmp(data, "DATA", 4) == 0) {
+        float t1, t2;
+        int vol;
+        if (sscanf(data, "DATA:T1=%f;T2=%f;VOL=%d;", &t1, &t2, &vol) == 3) {
+            ESP_LOGI("SCREEN", "Datos procesados: T1=%.2f, T2=%.2f, Volumen=%d", t1, t2, vol);
 
+            // Almacenar los datos más recientes
+            latest_data.t1 = t1;
+            latest_data.t2 = t2;
+            latest_data.vol = vol;
 
-
-            // Parsear la trama recibida
-            ESP_LOGI("UART", ">>RCV>>%s\n", rx_buffer);
-
-            if (strncmp(rx_buffer, "PARAM", 5) == 0)
-            {
-                //ESP_LOGI("UART", "PARAM: %s\n", rx_buffer); 
-                ESP_LOGI("UART", "PARAM\n"); 
-            }
-
-            if (strncmp(rx_buffer, "DATA", 4) == 0)
-            {
-                //ESP_LOGI("UART", "DATA: %s\n", rx_buffer);
-                ESP_LOGI("UART", "DATA\n"); 
-                // decode
-                if (sscanf(rx_buffer, "DATA:T1=%f;T2=%f;VOL=%d;", &t1, &t2, &vol) == 3)
-                {
-                    ESP_LOGI("UART", "-->DECODED: - T1: %.2f, T2: %.2f, Vol: %d", t1, t2, vol);
-
-                    // Actualizar etiquetas en la pantalla (debe ser en el contexto de LVGL)
-                    lvgl_port_lock(0); // Bloquear para actualizar desde otra tarea
-                    lv_label_set_text_fmt(label_temp1, "T1: %.2f °C", t1);
-                    lv_label_set_text_fmt(label_temp2, "T2: %.2f °C", t2);
-                    lv_label_set_text_fmt(label_volume, "Volumen: %d ml", vol);
-                    lvgl_port_unlock();
-                }
-                else
-                {
-                    ESP_LOGW("UART", "Trama no DATA válida: %s", rx_buffer);
-                }
-
-            }
+            // Programar la actualización de las etiquetas en el loop principal de LVGL
+            lv_async_call(update_labels_callback, &latest_data);
+        } else {
+            ESP_LOGW("SCREEN", "Formato de datos incorrecto: %s", data);
         }
-        vTaskDelay(delay_ticks);
     }
-}
-
-
-// Función genérica para enviar comandos UART
-void send_command(const char *command) {
-    uart_write_bytes(UART_PORT_NUM, command, strlen(command));
-    ESP_LOGI("UART", "Enviado: %s", command);
 }
 
 // Callback genérico para manejar eventos de botones
@@ -115,6 +69,10 @@ void button_event_handler(lv_event_t *e) {
 }
 
 void create_main_screen(lv_obj_t *scr) {
+    ESP_LOGI("SCREEN", "Creando pantalla principal");
+
+    // Configura el handler para la pantalla principal
+    uart_register_handler(screen_data_handler);
     // Fondo de la pantalla principal
     lv_obj_t *bg = lv_obj_create(scr);
     lv_obj_set_size(bg, lv_pct(100), lv_pct(100));

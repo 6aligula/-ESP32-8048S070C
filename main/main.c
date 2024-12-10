@@ -14,6 +14,7 @@
 #include "settings_screen.h"
 #include "driver/uart.h"
 #include "uart_config.h"
+#include "uart_utils.h"
 
 #include "lvgl.h" // Asegúrate de incluir el encabezado de LVGL
 LV_FONT_DECLARE(lv_font_montserrat_20); // Declarar la fuente habilitada
@@ -36,6 +37,13 @@ void go_back(void) {
     lv_scr_load(main_screen); // Por simplicidad, siempre volvemos a la principal
 }
 //fin de la sección de código de navegación
+// Tarea para manejar LVGL
+void lvgl_task(void *pvParameter) {
+    while (1) {
+        lv_task_handler();
+        vTaskDelay(pdMS_TO_TICKS(10)); // Ajusta el retardo según sea necesario
+    }
+}
 
 /* LCD settings */
 #define APP_LCD_LVGL_FULL_REFRESH           (0)
@@ -225,6 +233,12 @@ void app_main(void)
 
     // Instalar el controlador UART con un buffer de 1024 bytes
     uart_driver_install(UART_PORT_NUM, 1024, 0, 0, NULL, 0);
+    
+    // Inicializar UART Utils
+    if (!uart_utils_init()) {
+        ESP_LOGE("MAIN", "Failed to initialize UART utils");
+        return;
+    }
 
     // Inicializar LCD
     ESP_ERROR_CHECK(app_lcd_init(&lcd_panel));
@@ -257,6 +271,10 @@ void app_main(void)
 
     // Mostrar la pantalla principal al inicio
     lv_scr_load(main_screen);
+
+    // Crear tarea para manejar LVGL
+    //xTaskCreate(lvgl_task, "lvgl_task", 4096, NULL, 5, NULL);
+
     // Crear tarea para recibir datos del UART
     xTaskCreate(uart_receive_task, "uart_receive_task", 4096, NULL, 10, NULL);
 }

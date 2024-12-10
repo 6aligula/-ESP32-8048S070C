@@ -4,6 +4,8 @@
 #include "esp_log.h"
 #include "esp_lvgl_port.h"
 #include <stdlib.h> // Para malloc y free
+#include <string.h>
+#include "uart_utils.h" // Incluye las funciones de UART centralizadas
 
 // Definición de la estructura btn_data_t
 typedef struct {
@@ -20,6 +22,13 @@ static void request_values_callback(lv_event_t *e);
 static void button_press_callback(lv_event_t *e);
 static void button_release_callback(lv_event_t *e);
 static void btn_destroy_callback(lv_event_t *e);
+
+static void settings_data_handler(const char *data) {
+    // Procesa los datos específicos de la pantalla de ajustes
+    if (strncmp(data, "SETTINGS", 8) == 0) {
+        ESP_LOGI("SETTINGS", "Datos de configuración recibidos: %s", data);
+    }
+}
 
 // Función para manejar incrementos o decrementos
 static void update_value(btn_data_t *btn_data) {
@@ -123,6 +132,11 @@ static void btn_destroy_callback(lv_event_t *e) {
 }
 
 void create_settings_screen(lv_obj_t *scr) {
+    ESP_LOGI("SETTINGS", "Creando pantalla de ajustes");
+
+    // Configura el handler para la pantalla de ajustes
+    uart_register_handler(settings_data_handler);
+    
     // Fondo de la pantalla
     lv_obj_t *bg = lv_obj_create(scr);
     lv_obj_set_size(bg, LV_PCT(100), LV_PCT(100));
@@ -277,11 +291,12 @@ void create_settings_screen(lv_obj_t *scr) {
 // Callback para aplicar cambios
 static void apply_changes_callback(lv_event_t *e) {
     ESP_LOGI("Settings", "Apply Changes clicked");
-    // Aquí puedes implementar la lógica para aplicar cambios y enviarlos por UART
+    send_command("SPA*"); // Enviar comando por UART usando función centralizada
 }
 
 // Callback para solicitar valores actuales
 static void request_values_callback(lv_event_t *e) {
     ESP_LOGI("Settings", "Request Current Values clicked");
     // Aquí puedes implementar la lógica para solicitar valores actuales por UART
+    send_command("SPV*"); // Enviar comando por UART usando función centralizada
 }
