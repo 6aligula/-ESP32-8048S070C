@@ -23,12 +23,62 @@ static void button_press_callback(lv_event_t *e);
 static void button_release_callback(lv_event_t *e);
 static void btn_destroy_callback(lv_event_t *e);
 
-static void settings_data_handler(const char *data) {
-    // Procesa los datos específicos de la pantalla de ajustes
-    if (strncmp(data, "SETTINGS", 8) == 0) {
-        ESP_LOGI("SETTINGS", "Datos de configuración recibidos: %s", data);
+lv_obj_t * checkbox;
+// Función para actualizar el estado del checkbox
+void actualizar_checkbox(lv_obj_t * checkbox, bool estado) {
+    if (estado) {
+        lv_obj_add_state(checkbox, LV_STATE_CHECKED);   // Marcar el checkbox
+        ESP_LOGI("Checkbox", "El checkbox fue marcado programáticamente");
+    } else {
+        lv_obj_remove_state(checkbox, LV_STATE_CHECKED); // Desmarcar el checkbox
+        ESP_LOGI("Checkbox", "El checkbox fue desmarcado programáticamente");
     }
 }
+
+void clean_data(char *data) {
+    char *src = data, *dst = data;
+    while (*src) {
+        if (*src != '\r' && *src != '\n') {
+            *dst++ = *src;
+        }
+        src++;
+    }
+    *dst = '\0';
+}
+
+static void settings_data_handler(const char *data)
+{
+    ESP_LOGI("SCREEN", "Handler invocado en settings con: %s", data);
+
+    // Limpiar caracteres no deseados
+    char cleaned_data[256];
+    strncpy(cleaned_data, data, sizeof(cleaned_data) - 1);
+    cleaned_data[sizeof(cleaned_data) - 1] = '\0';
+    clean_data(cleaned_data);
+
+    ESP_LOGI("SCREEN", "Datos limpiados: %s", cleaned_data);
+
+    if (strstr(cleaned_data, "SETTINGS") == cleaned_data) {
+        ESP_LOGI("SETTINGS", "Procesando datos de configuración: %s", cleaned_data);
+
+        const char *chk_str = strstr(cleaned_data, "CHK=");
+        if (chk_str != NULL) {
+            int chk_value = atoi(chk_str + 4);
+
+            if (checkbox != NULL) {
+                actualizar_checkbox(checkbox, chk_value != 0);
+                ESP_LOGI("SETTINGS", "Checkbox actualizado a: %d", chk_value);
+            } else {
+                ESP_LOGE("SETTINGS", "Checkbox no está inicializado");
+            }
+        } else {
+            ESP_LOGE("SETTINGS", "CHK no encontrado en los datos");
+        }
+    } else {
+        ESP_LOGW("SETTINGS", "Trama ignorada: %s", cleaned_data);
+    }
+}
+
 
 // Función para manejar incrementos o decrementos
 static void update_value(btn_data_t *btn_data) {
@@ -41,14 +91,7 @@ static void update_value(btn_data_t *btn_data) {
     int value = atoi(current_text);
     value += btn_data->increment;
 
-    // Opcional: Validaciones de valores (por ejemplo, mantener entre 0 y 100)
-    // if (value < 0) value = 0;
-    // if (value > 100) value = 100;
-
     lv_label_set_text_fmt(btn_data->label, "%d", value);
-
-    // Aquí puedes implementar el envío por UART si es necesario
-    // uart_send_value(btn_data->label, value);
 }
 
 // Función estática para manejar el temporizador
@@ -131,6 +174,17 @@ static void btn_destroy_callback(lv_event_t *e) {
     }
 }
 
+// Función de callback para el checkbox
+static void checkbox_event_handler(lv_event_t * e) {
+    lv_obj_t * checkbox = lv_event_get_target(e);
+
+    if (lv_obj_has_state(checkbox, LV_STATE_CHECKED)) {
+        ESP_LOGI("Checkbox", "El checkbox está marcado");
+    } else {
+        ESP_LOGI("Checkbox", "El checkbox está desmarcado");
+    }
+}
+
 void create_settings_screen(lv_obj_t *scr) {
     ESP_LOGI("SETTINGS", "Creando pantalla de ajustes");
 
@@ -168,10 +222,11 @@ void create_settings_screen(lv_obj_t *scr) {
     lv_obj_set_style_pad_bottom(param_scroll, 0, LV_PART_MAIN);  // Sin padding inferior
 
     // Añadir el Checkbox llamado "check" alineado a la derecha en la misma fila que el título
-    lv_obj_t *checkbox = lv_checkbox_create(scr);
+    checkbox = lv_checkbox_create(scr);
     lv_checkbox_set_text(checkbox, "check");
     lv_obj_add_style(checkbox, &font_style, 0);
     lv_obj_align(checkbox, LV_ALIGN_TOP_RIGHT, -50, 100); // Ajusta los offsets según sea necesario
+    lv_obj_add_event_cb(checkbox, checkbox_event_handler, LV_EVENT_VALUE_CHANGED, NULL);
 
     // Parámetros
     const char *param_labels[] = {"Parametro 1", "Parametro 2", "Parametro 3", "Parametro 4", "Parametro 5", "Parametro 6", "Parametro 7", "Parametro 8"};
@@ -298,5 +353,5 @@ static void apply_changes_callback(lv_event_t *e) {
 static void request_values_callback(lv_event_t *e) {
     ESP_LOGI("Settings", "Request Current Values clicked");
     // Aquí puedes implementar la lógica para solicitar valores actuales por UART
-    send_command("SPV*"); // Enviar comando por UART usando función centralizada
+    send_command("GET_SETTINGS*"); // Enviar comando por UART usando función centralizada
 }

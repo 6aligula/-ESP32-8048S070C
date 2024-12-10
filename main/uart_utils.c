@@ -7,6 +7,7 @@
 #include "freertos/semphr.h"
 
 #define MAX_UART_HANDLERS 10
+#define UART_RX_BUFFER_SIZE 4096
 
 typedef void (*uart_data_handler_t)(const char *);
 
@@ -96,27 +97,60 @@ void send_command(const char *command) {
 
 void uart_receive_task(void *arg) {
     char rx_buffer[128];
-    const TickType_t delay_ticks = pdMS_TO_TICKS(100); // 100 ms en ticks
+    const TickType_t delay_ticks = pdMS_TO_TICKS(100);
+
+    static char temp_buffer[UART_RX_BUFFER_SIZE];
+    static int temp_index = 0;
 
     while (true) {
         int length = uart_read_bytes(UART_PORT_NUM, (uint8_t *)rx_buffer, sizeof(rx_buffer) - 1, pdMS_TO_TICKS(1000));
         if (length > 0) {
             rx_buffer[length] = '\0'; // Asegurar terminación de cadena
-            ESP_LOGI("UART", "Recibido: %s", rx_buffer);
+            ESP_LOGI("UART", "Recibido fragmento: %s", rx_buffer);
 
-            // Llama a todos los handlers registrados
-            if (handlers_mutex != NULL) {
-                if (xSemaphoreTake(handlers_mutex, portMAX_DELAY) == pdTRUE) {
-                    for (int i = 0; i < MAX_UART_HANDLERS; i++) {
-                        if (data_handlers[i] != NULL) {
-                            ESP_LOGI("UART_UTILS", "Llamando al handler en slot %d: %p", i, (void *)data_handlers[i]);
-                            data_handlers[i](rx_buffer);
+            // Ensamblar datos en el buffer temporal
+            if (temp_index + length < sizeof(temp_buffer) - 1) {
+                memcpy(&temp_buffer[temp_index], rx_buffer, length);
+                temp_index += length;
+                temp_buffer[temp_index] = '\0';
+
+                // Procesar cada trama completa separada por '\n'
+                char *start = temp_buffer;
+                char *newline = NULL;
+
+                while ((newline = strchr(start, '\n')) != NULL) {
+                    *newline = '\0'; // Terminar la subtrama en el delimitador
+                    ESP_LOGI("UART", "Trama completa procesada: %s", start);
+
+                    // Llamar a los handlers registrados con la subtrama
+                    if (handlers_mutex != NULL) {
+                        if (xSemaphoreTake(handlers_mutex, portMAX_DELAY) == pdTRUE) {
+                            for (int i = 0; i < MAX_UART_HANDLERS; i++) {
+                                if (data_handlers[i] != NULL) {
+                                    ESP_LOGI("UART_UTILS", "Llamando al handler en slot %d: %p", i, (void *)data_handlers[i]);
+                                    data_handlers[i](start);
+                                }
+                            }
+                            xSemaphoreGive(handlers_mutex);
                         }
                     }
-                    xSemaphoreGive(handlers_mutex);
+
+                    // Avanzar al inicio de la siguiente subtrama
+                    start = newline + 1;
+                }
+
+                // Mover datos no procesados al inicio del buffer temporal
+                if (*start != '\0') {
+                    int remaining = strlen(start);
+                    memmove(temp_buffer, start, remaining);
+                    temp_index = remaining;
+                    temp_buffer[temp_index] = '\0';
+                } else {
+                    temp_index = 0;
                 }
             } else {
-                ESP_LOGW("UART_UTILS", "handlers_mutex is NULL, no handlers to call");
+                ESP_LOGE("UART", "Overflow en el buffer temporal, reiniciando");
+                temp_index = 0; // Reiniciar el buffer temporal si ocurre un overflow
             }
         }
         vTaskDelay(delay_ticks);

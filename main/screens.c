@@ -55,16 +55,16 @@ void button_event_handler(lv_event_t *e) {
 
     if (strcmp(btn_label, "START") == 0) {
         ESP_LOGI("BUTTON", "Botón Start presionado.");
-        send_command("STA01*");
+        send_command("CMD:STA01*");
     } else if (strcmp(btn_label, "STOP") == 0) {
         ESP_LOGI("BUTTON", "Botón Stop presionado.");
-        send_command("STO01*");
+        send_command("CMD:STO01*");
     } else if (strcmp(btn_label, "RESET") == 0) {
         ESP_LOGI("BUTTON", "Botón Reset presionado.");
-        send_command("RES01*");
+        send_command("CMD:RES01*");
     }else if (strcmp(btn_label, "RST CNT") == 0) {
         ESP_LOGI("BUTTON", "BTN Reset Counters pressed.");
-        send_command("RSC01*");
+        send_command("CMD:RSC01*");
     }
 }
 

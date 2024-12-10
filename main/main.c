@@ -232,7 +232,7 @@ void app_main(void)
     uart_set_pin(UART_PORT_NUM, UART_TX_PIN, UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 
     // Instalar el controlador UART con un buffer de 1024 bytes
-    uart_driver_install(UART_PORT_NUM, 1024, 0, 0, NULL, 0);
+    uart_driver_install(UART_PORT_NUM, 4096, 0, 0, NULL, 0);
     
     // Inicializar UART Utils
     if (!uart_utils_init()) {
