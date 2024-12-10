@@ -500,12 +500,6 @@ void create_settings_screen(lv_obj_t *scr)
     lv_obj_center(label_apply);
     lv_obj_add_event_cb(btn_apply, apply_changes_callback, LV_EVENT_CLICKED, NULL);
 }
-// Callback para aplicar cambios
-static void apply_changes_callback(lv_event_t *e)
-{
-    ESP_LOGI("Settings", "Apply Changes clicked");
-    send_command("SPA*"); // Enviar comando por UART usando función centralizada
-}
 
 // Callback para solicitar valores actuales
 static void request_values_callback(lv_event_t *e)
@@ -513,4 +507,47 @@ static void request_values_callback(lv_event_t *e)
     ESP_LOGI("Settings", "Request Current Values clicked");
     // Aquí puedes implementar la lógica para solicitar valores actuales por UART
     send_command("GET_SETTINGS*"); // Enviar comando por UART usando función centralizada
+}
+
+// Callback para enviar los cambios
+static void apply_changes_callback(lv_event_t *e)
+{
+    ESP_LOGI("Settings", "Apply Changes clicked");
+
+    // Crear un buffer para construir la trama
+    char command[256] = {0};
+    int offset = 0;
+
+    // Agregar el prefijo de la trama
+    offset += snprintf(command + offset, sizeof(command) - offset, "SETTINGS:");
+
+    // Agregar los valores de los parámetros P1 a P8
+    for (int i = 0; i < NUM_PARAMS; i++)
+    {
+        if (param_value_labels[i] != NULL)
+        {
+            const char *value_text = lv_label_get_text(param_value_labels[i]);
+            int value = atoi(value_text);
+            offset += snprintf(command + offset, sizeof(command) - offset, "P%d=%d;", i + 1, value);
+        }
+        else
+        {
+            ESP_LOGW("Settings", "Etiqueta para P%d no está inicializada", i + 1);
+        }
+    }
+
+    // Agregar el estado del checkbox
+    if (checkbox != NULL)
+    {
+        bool is_checked = lv_obj_has_state(checkbox, LV_STATE_CHECKED);
+        offset += snprintf(command + offset, sizeof(command) - offset, "CHK=%d;", is_checked ? 1 : 0);
+    }
+    else
+    {
+        ESP_LOGW("Settings", "Checkbox no está inicializado");
+    }
+
+    // Enviar la trama por UART
+    ESP_LOGI("Settings", "Enviando comando: %s", command);
+    send_command(command); // Enviar comando por UART usando función centralizada
 }
