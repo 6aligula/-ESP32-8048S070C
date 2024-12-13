@@ -6,15 +6,65 @@
 #include "esp_lvgl_port.h"
 #include "uart_utils.h"
 
+// Definiciones de errores
+#define NUM_ERRORES 8
+
+const char *mensajes_errores[NUM_ERRORES] = {
+    "Error 0: Sobrecalentamiento T1",
+    "Error 1: Sobrecalentamiento T2",
+    "Error 2: Volumen fuera de rango",
+    "Error 3: Comunicacion UART fallida",
+    "Error 4: Sensor de temperatura desconectado",
+    "Error 5: Bateria baja",
+    "Error 6: Memoria insuficiente",
+    "Error 7: Otro error desconocido"
+};
+
+// Función para verificar si un bit específico está activado
+bool is_bit_set(uint8_t byte, uint8_t bit_position) {
+    if (bit_position >= 8) {
+        // Posición de bit inválida
+        return false;
+    }
+    return (byte & (1 << bit_position)) != 0;
+}
+
+// Función para obtener los mensajes de errores activos
+char* get_active_errors(uint8_t error_byte) {
+    // Estimar el tamaño máximo necesario
+    size_t max_size = NUM_ERRORES * 50; // Ajusta según tus mensajes
+    char *error_messages = (char*)malloc(max_size);
+    if (error_messages == NULL) {
+        // Manejar error de asignación de memoria
+        return NULL;
+    }
+    error_messages[0] = '\0'; // Inicializar cadena vacía
+
+    for (uint8_t i = 0; i < NUM_ERRORES; i++) {
+        if (is_bit_set(error_byte, i)) {
+            strcat(error_messages, mensajes_errores[i]);
+            strcat(error_messages, "\n"); // Nueva línea para cada error
+        }
+    }
+
+    if (strlen(error_messages) == 0) {
+        strcpy(error_messages, "Ninguna");
+    }
+
+    return error_messages;
+}
+
 static lv_obj_t *label_temp1;
 static lv_obj_t *label_temp2;
 static lv_obj_t *label_volume;
+static lv_obj_t *label_alarm; // Etiqueta para errores
 
 // Definir la estructura para los datos UART
 typedef struct {
     float t1;
     float t2;
     int vol;
+    uint8_t errores;
 } uart_data_t;
 
 static uart_data_t latest_data;
@@ -25,6 +75,15 @@ static void update_labels_callback(void *param) {
     lv_label_set_text_fmt(label_temp1, "T1: %.2f °C", data->t1);
     lv_label_set_text_fmt(label_temp2, "T2: %.2f °C", data->t2);
     lv_label_set_text_fmt(label_volume, "Volumen: %d ml", data->vol);
+    
+    // Obtener los mensajes de errores activos
+    char *errores_activos = get_active_errors(data->errores);
+    if (errores_activos != NULL) {
+        lv_label_set_text(label_alarm, errores_activos);
+        free(errores_activos); // Liberar la memoria asignada
+    } else {
+        lv_label_set_text(label_alarm, "Error al procesar errores");
+    }
 }
 
 static void screen_data_handler(const char *data) {
@@ -32,13 +91,17 @@ static void screen_data_handler(const char *data) {
     if (strncmp(data, "DATA", 4) == 0) {
         float t1, t2;
         int vol;
-        if (sscanf(data, "DATA:T1=%f;T2=%f;VOL=%d;", &t1, &t2, &vol) == 3) {
+        uint8_t errores = 0;
+        // Parsear ERR=0xXX
+        int parsed = sscanf(data, "DATA:T1=%f;T2=%f;VOL=%d;ERR=0x%hhX;", &t1, &t2, &vol, &errores);
+        if (parsed >= 3) {
             ESP_LOGI("SCREEN", "Datos procesados: T1=%.2f, T2=%.2f, Volumen=%d", t1, t2, vol);
 
             // Almacenar los datos más recientes
             latest_data.t1 = t1;
             latest_data.t2 = t2;
             latest_data.vol = vol;
+            latest_data.errores = errores;
 
             // Programar la actualización de las etiquetas en el loop principal de LVGL
             lv_async_call(update_labels_callback, &latest_data);
@@ -134,8 +197,9 @@ void create_main_screen(lv_obj_t *scr) {
     lv_obj_set_size(alarm_box, lv_pct(90), 100);
     lv_obj_set_style_bg_color(alarm_box, lv_color_hex(0xADD8E6), 0); // Azul claro
     lv_obj_align(alarm_box, LV_ALIGN_BOTTOM_MID, 0, -100); // Posicionado en la parte inferior
+    lv_obj_set_style_pad_top(alarm_box, 0, LV_PART_MAIN); // Sin padding superior
 
-    lv_obj_t *label_alarm = lv_label_create(alarm_box);
+    label_alarm = lv_label_create(alarm_box);
     lv_label_set_text(label_alarm, "Alarmas / Errores:\n- Ninguna");
     lv_obj_set_style_text_font(label_alarm, &lv_font_montserrat_20, 0);
     lv_obj_align(label_alarm, LV_ALIGN_TOP_LEFT, 10, 10); // Alineado dentro del cuadro de alarmas
